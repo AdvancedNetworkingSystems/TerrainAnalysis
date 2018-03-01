@@ -1,0 +1,24 @@
+peline":[
+		{
+			"type" : "readers.las"
+		},
+		{
+			"type":"filters.reprojection",
+			"in_srs":"EPSG:3003",
+			"out_srs":"EPSG:4326"
+		},
+		{
+      			"type":"filters.chipper",
+			"capacity":"600"
+		},
+		{
+			"type": "writers.pgpointcloud",
+			"connection":"dbname='terrain_analysis' user='terrain_analysis",
+			"table" : "lidar_lyon",
+			"column": "pa",
+			"srid": "4326",
+			"output_dims": "X,Y,Z"
+		}
+	]
+}
+
