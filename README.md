@@ -39,8 +39,8 @@ done
 * Download the osm building files from an osm mirror
 * Insert the osm building using the `shp2pgsql` command
 ```bash
-shp2pgsql -Gs 4326 -I ~/osm/lyon/gis.osm_buildings_a_free_1.shp  lyon_buildings | sudo -u postgres psql
-shp2pgsql -Gs 4326 -I ~/osm/centro_italy/gis.osm_buildings_a_free_1.shp  centro_buildings | sudo -u postgres psql
+shp2pgsql -s 4326 -I ~/osm/lyon/gis.osm_buildings_a_free_1.shp  lyon_buildings | sudo -u postgres psql
+shp2pgsql -s 4326 -I ~/osm/centro_italy/gis.osm_buildings_a_free_1.shp  centro_buildings | sudo -u postgres psql
 ```
 * Use the provided pipeline to insert the .asc or .laz lidar files into the postgis db
 If you are using different lidar files rembember to fix the SRID in the pipeline json definition
