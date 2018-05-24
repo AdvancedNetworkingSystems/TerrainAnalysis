@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from shapely.geometry import *
 from shapely.affinity import rotate, translate, scale
 import itertools
-from random import shuffle
+from random import shuffle, choice
 
 
 class terrain_RF:
@@ -30,49 +30,54 @@ class terrain_RF:
         else:
             raise Exception("Dataset not found")
 
-    def profile_osm(self, p1, p2):
-        self.cur.execute("""   WITH p1 AS(
+    def profile_osm(self, p1, p2, downscale=False):
+        self.cur.execute("""WITH p1 AS(
                             SELECT ST_Centroid(geom) as pt FROM {0}
                             WHERE  gid={2}
-                        ),
-                        p2 as(
-                            SELECT ST_Centroid(geom) as pt FROM {0}
-                            WHERE  gid={3}
-                        ),
-                        building AS(
-                            SELECT ST_Buffer_Meters(ST_MakeLine(p1.pt, p2.pt), {4}) AS line FROM p1,p2
-                        ),
-                        lidar AS(
-                            WITH
-                            patches AS (
-                            SELECT pa FROM {1}
-                            JOIN building ON PC_Intersects(pa, line)
                             ),
-                            pa_pts AS (
-                            SELECT PC_Explode(pa) AS pts FROM patches
+                            p2 as(
+                                SELECT ST_Centroid(geom) as pt FROM {0}
+                                WHERE  gid={3}
                             ),
-                            building_pts AS (
-                            SELECT pts, line FROM pa_pts JOIN building
-                            ON ST_Intersects(line, pts::geometry)
-                            )
-                            SELECT
-                            PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, p1.pt, true) as distance
-                            FROM building_pts, p1
-                            )
-                        SELECT lidar.z, lidar.distance  FROM lidar ORDER BY distance;""".format(self.osm_table, self.lidar_table, p1, p2, self.buff))
+                            building AS(
+                                SELECT ST_Buffer_Meters(ST_MakeLine(p1.pt, p2.pt), {4}) AS line FROM p1,p2
+                            ),
+                            lidar AS(
+                                WITH
+                                patches AS (
+                                SELECT pa FROM {1}
+                                JOIN building ON PC_Intersects(pa, line)
+                                ),
+                                pa_pts AS (
+                                SELECT PC_Explode(pa) AS pts FROM patches
+                                ),
+                                building_pts AS (
+                                SELECT pts, line FROM pa_pts JOIN building
+                                ON ST_Intersects(line, pts::geometry)
+                                )
+                                SELECT
+                                PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, p1.pt, true) as distance
+                                FROM building_pts, p1
+                                )
+                            SELECT lidar.z, lidar.distance  FROM lidar ORDER BY distance;""".format(self.osm_table, self.lidar_table, p1, p2, self.buff))
         q_result = cur.fetchall()
         if cur.rowcount == 0:
             raise Exception("No profile")
         # remove invalid points
         profile = filter(lambda a: a[0] != -9999, q_result)
-        n_points = len(profile)
+        if downscale > 0:
+            #keep 1 on 3 points
+            old_profile = profile
+            profile = []
+            for i in range(len(old_profile)):
+                if i % downscale == 0:
+                    profile.append(choice(old_profile[i:i + downscale]))
         # cast everything to float
         y, d = zip(*profile)
         y = [float(i) for i in y]
         d = [float(i) for i in d]
         # Close the ring to make a polygon
-        #print "%d points, %f meters: %f density ppm"%(n_points, d[-1], n_points/d[-1])
-        min_y = min(y)
+        min_y = min(y) - 10
         y.insert(0, min_y)
         d.insert(0, d[0])
         y.append(min_y)
@@ -141,8 +146,8 @@ class terrain_RF:
         loss += 9.6 * 2 * n_obst + 0.45 * tot_dist
         return loss
 
-    def link_calculator(self, b1, b2, h1=1, h2=1, plot=False):
-        profile = self.profile_osm(b1, b2)
+    def link_calculator(self, b1, b2, h1=1, h2=1, plot=False, downscale=False):
+        profile = self.profile_osm(b1, b2, downscale=downscale)
         d, y = self.apply_earth_curvature(profile)
         shap_profile = Polygon(zip(d, y))
         A = Point(d[1], y[1] + h1)
@@ -168,11 +173,7 @@ class terrain_RF:
             # Los passing trough terrain
             obstacles = shap_profile.intersection(LOS)
             status = 0  # LOS OBSTR
-            try:
-                loss = self.sommer_obs(A, B, obstacles)
-            except:
-                loss = 0
-                status = 4
+            loss = self.sommer_obs(A, B, obstacles)
         else:
             # LOS is free
             loss = 0
@@ -185,24 +186,28 @@ class terrain_RF:
                 status += 2  # F60 obstructed
             loss += self.FSPL(A.distance(B))
             #print "The path is free with loss between A and B distant %f m is %f" % (A.distance(B), loss)
-        plt.xlabel("distance (m)")
-        plt.ylabel("height a.s.l. (m)")
-        plt.legend(loc="upper left", bbox_to_anchor=(1,1))
-        if status is 0:
-            status_t = "LOS Obstructed"
-        elif status is 1:
-            status_t = "LOS Free"
-        elif status is 3:
-            status_t = "Fresnel Obstructed"
-            if plot:
-                plt.show()
-        elif status is 4:
-            status_t = "Error"
-        text = "LOSS: %fdB\n"%((loss))+status_t
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props)
-        plt.close()
+        if plot:
+            plt.xlabel("distance (m)")
+            plt.ylabel("height a.s.l. (m)")
+            plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+            if status is 0:
+                status_t = "LOS Obstructed"
+            elif status is 1:
+                status_t = "LOS Free"
+            elif status is 3:
+                status_t = "Fresnel Obstructed"
+                if plot:
+                    plt.show()
+            elif status is 2:
+                status_t = "Error"
+            text = "LOSS: %fdB\n"%((loss))+status_t
+            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+            ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props)
+            plt.show()
+        else:
+            plt.close()
         # plt.axes().set_aspect('equal')
+        print " distance: %f, number of returns %d, density %f"%((d[-2], len(d), d[-2]/len(d)))
         return loss, status
 
     def get_buildings(self, xmin, ymin, xmax, ymax):
@@ -215,11 +220,13 @@ class terrain_RF:
     def get_buildings_height(self, buildings, filename='heigts.csv'):
         heights = []
         if os.path.isfile(filename):
-            with open("heigts.csv", 'rb') as f:
+            with open(filename, 'rb') as f:
                 csv_heights = list(csv.reader(f))
                 for building in csv_heights[1:]:
                     heights.append((int(building[0]), float(building[1][1:])))
         else:
+            with open(filename, 'a') as f:
+                print >> f, "gid, height"
             for building in buildings:
                 self.cur.execute("""WITH
                                 -- Get the buildings
@@ -246,45 +253,77 @@ class terrain_RF:
                                 FROM building_pts
                                 """.format(self.osm_table, self.lidar_table, building[0]))
                 result = self.cur.fetchall()
-                with open("heigts.csv", 'a') as f:
+                with open(filename, 'a') as f:
                     print >> f, "%d, %f"%(building[0], float(result[0][0]))
                 heights.append((int(building[0]), float(result[0][0])))
         return heights
 
+    def distance(self, b1, b2):
+        self.cur.execute('''WITH
+                            building1 AS(
+                            SELECT gid, geom FROM {0}
+                            WHERE gid = {1}
+                            ),
+                            building2 AS(
+                            SELECT gid, geom FROM {0}
+                            WHERE gid = {2}
+                            )
+                            SELECT ST_Distance_Sphere(ST_Centroid(building1.geom), ST_Centroid(building2.geom))
+                            FROM building1, building2
+                        '''.format(self.osm_table, b1, b2))
+        distance = float(self.cur.fetchall()[0][0])
+        return distance
+
 if __name__ == '__main__':
     conn = psycopg2.connect(dbname='postgres', port=5432, user='gabriel', password='qwerasdf', host='192.168.184.102')
     cur = conn.cursor()
-    tf = terrain_RF(cur=cur, dataset='toscana')
-    buildings = tf.get_buildings(11.234, 43.758, 11.285, 43.787)
-    heights = tf.get_buildings_height(buildings)
+    tf = terrain_RF(cur=cur, dataset='lyon')
+    # with open("lyon_links_compare.csv", 'a') as fw:
+    #     print >> fw, "b1, b2, status_downscale, loss_downscale, status, loss"
+    # with open("lyon_links.csv", 'rb') as fr:
+    #     csv_links = list(csv.reader(fr))[1:]
+    #     for link in csv_links:
+    #         try:
+    #             loss, status = tf.link_calculator(link[0], link[1], plot=False, downscale=3)
+    #         except:
+    #             loss = 0
+    #             status = 2
+    #         with open("lyon_links_compare.csv", 'a') as fw:
+    #             print >> fw, "%s,%s,%d,%f,%d,%f" % (link[0], link[1], status, loss, int(link[2]), float(link[3]))
+            
+    #buildings = tf.get_buildings(11.234, 43.758, 11.285, 43.787) FIRENZE
+    buildings = tf.get_buildings(4.8411, 45.7613, 4.8528, 45.7681)
+    heights = tf.get_buildings_height(buildings, filename=tf.dataset + "_height.csv")
     dic_h = dict(heights)
     gid, h = zip(*heights)
     mean_height = numpy.mean(h)
-    buildings_pair = itertools.combinations(buildings, 2)
+    ninth_percentile_heigth = numpy.percentile(h, 90)
+    buildings_pair = list(itertools.combinations(buildings, 2))
+    shuffle(buildings_pair)
+    with open(tf.dataset + "_links.csv", 'a') as fl:
+        print >> fl, "b1,b2,status,loss,status_downscale,loss_downscale"
     for building in buildings_pair:
         id1 = building[0][0]
         id2 = building[1][0]
-        if dic_h[id1] >= mean_height and dic_h[id2] >= mean_height:
-            loss, status = tf.link_calculator(id1, id2, plot=False)
-            if status is 1 or status is 3:
-                with open("links.csv", 'a') as fl:
-                    print >> fl, "%s,%s,%d,%f" % (id1,id2,status,loss)
-                print "%s to %s has status %d with loss %f, received pwr %f" % (id1, id2, status, loss, 23+16+16-loss)
+        if (dic_h[id1] >= mean_height and dic_h[id2] >= mean_height) or \
+                dic_h[id1] >= ninth_percentile_heigth or \
+                dic_h[id2] >= ninth_percentile_heigth or \
+                tf.distance(id1, id2) < 100:
+            try:
+                loss, status = tf.link_calculator(id1, id2, plot=False)
+            except:
+                loss = 0
+                status = 2
+            try:
+                loss_ds, status_ds = tf.link_calculator(id1, id2, plot=False, downscale=3)
+            except:
+                loss_ds = 0
+                status_ds = 2
+            with open(tf.dataset + "_links.csv", 'a') as fl:
+                print >> fl, "%s,%s,%d,%f,%d,%f" % (id1, id2, status, loss, status_ds, loss_ds)
+                # if status in [1, 3]:
+                #     print "%s to %s has status %d with loss %f, received pwr %f" % (id1, id2, status, loss, 23+16+16-loss)
         else:
-            pass
-            #print "%s to %s is unprobable to be feasible"% (id1, id2)
-# 
-    # loss, status = tf.link_calculator(1465205, 1466188, plot=True)
-    #print(tf.link_calculator(841985, 73907, plot=True))
-    #print(tf.link_calculator(752497, 73907, 5, 5, plot=True))
-
-    # for i in range(10):
-    #     for j in range(10):
-    #         id1 = 1465200 + i
-    #         id2 = 1466180 + j
-    #         try:
-    #             loss, status = tf.link_calculator(id1, id2, 5, 5, plot=False, buf = 0.5)
-    #             if status != 0:
-    #                 print "%s to %s has status %d with loss %f" % (id1, id2, status, loss)
-    #         except Exception as e:
-    #             print e
+            with open(tf.dataset + "_links.csv", 'a') as fl:
+                print >> fl, "%s,%s,%d,%f,%d,%f" % (id1, id2, 4, 0, 4, 0)
+            #print "%s to %s is unprobable to be feasible" % (id1, id2)
