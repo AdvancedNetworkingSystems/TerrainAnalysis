@@ -3,6 +3,8 @@ import psycopg2
 import numpy
 import os
 import csv
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from shapely.geometry import *
 from shapely.affinity import rotate, translate, scale
