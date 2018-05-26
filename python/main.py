@@ -8,6 +8,9 @@ from random import shuffle
 from link import Link
 from terrain_rf import terrain_RF
 
+
+
+
 if __name__ == '__main__':
     conn = psycopg2.connect(dbname='postgres', port=5432, user='gabriel', password='qwerasdf', host='192.168.184.102')
     cur = conn.cursor()
@@ -17,8 +20,8 @@ if __name__ == '__main__':
     buildings = tf.get_buildings()
     dic_h = dict(buildings)
     gid, h = zip(*buildings)
-    mean_height = numpy.mean(h)
-    ninth_percentile_heigth = numpy.percentile(h, 90)
+    #mean_height = numpy.mean(h)
+    #ninth_percentile_heigth = numpy.percentile(h, 90)
     buildings_pair = list(itertools.combinations(gid, 2))
     shuffle(buildings_pair)
     link_filename = "../data/"+tf.dataset+"_links.csv"
@@ -39,9 +42,9 @@ if __name__ == '__main__':
             loss_ds, status_ds = link_ds.loss_calculator(downscale=3)
         except errors.TopologicalError:
             loss = 0
-            status = 2
+            status = -1
             loss_ds = 0
-            status_ds = 2
+            status_ds = -1
         with open(link_filename, 'a') as fl:
             print >> fl, "%s,%s,%d,%f,%d,%f" % (id1, id2, status, loss, status_ds, loss_ds)
             if status > 0:

@@ -18,7 +18,7 @@ class terrain_RF:
     def set_workingarea(self, xmin, ymin, xmax, ymax):
         self.working_area = (xmin, ymin, xmax, ymax)
 
-    def profile_osm(self, p1, p2, downscale=False):
+    def profile_osm(self, p1, p2):
         self.cur.execute("""WITH p1 AS(
                             SELECT ST_Centroid(geom) as pt FROM {0}
                             WHERE  gid={2}
