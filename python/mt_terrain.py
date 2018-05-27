@@ -6,6 +6,7 @@ import os
 import itertools
 import Queue
 import sys
+import time
 from shapely import errors
 from random import shuffle
 from link import Link
@@ -32,9 +33,9 @@ class MT_Terrain():
         chunk_size = len(buildings_pair)/n_querier
         chunks = list(chunked(buildings_pair, chunk_size))
         self.link_filename = "../data/"+tf.dataset+"_links.csv"
-        with open(self.link_filename, 'a') as fl:
-            print >> fl, "b1,b2,status,loss,status_downscale,loss_downscale"
-        
+        # with open(self.link_filename, 'a') as fl:
+        #     print >> fl, "b1,b2,status,loss,status_downscale,loss_downscale"
+        self.start_time=time.time()
         for i in range(n_querier):
             t = threading.Thread(target=self.queryWorker, args=[i, chunks[i]])
             self.querier.append(t)
@@ -45,9 +46,24 @@ class MT_Terrain():
             self.calc.append(t)
             t.daemon = True
             t.start()
+        t = threading.Thread(target=self.monitor)
+        t.daemon = True
+        t.start()
         [self.querier[i].join() for i in range(n_querier)]
         self.go = False
         [self.calc[i].join() for i in range(n_calc)]
+    
+    def monitor(self):
+        time.sleep(5)
+        while(self.go):
+            for i in range(n_calc):
+                n = 0
+                with open("%s_%d" % (self.link_filename, i), 'r') as f:
+                    n += len(f.readlines())
+            elapsed_s = time.time() - self.start_time
+            avg_speed = elapsed_s / n
+            print("%d seconds passed, %d links estimated.Avg time per link%f"%(elapsed_s, n, avg_speed))
+            time.sleep(3)
 
     def queryWorker(self, worker_id, buildings_pairs):
         print("I am %d"%(worker_id))
@@ -81,10 +97,10 @@ class MT_Terrain():
                 status = -1
                 loss_ds = 0
                 status_ds = -1
-            with open(self.link_filename, 'a') as fl:
+            with open("%s_%d" % (self.link_filename, worker_id), 'a') as fl:
                 print >> fl, "%s,%s,%d,%f,%d,%f" % (id1, id2, status, loss, status_ds, loss_ds)
-                if status > 0:
-                    print "Worker %d: %s to %s has status %d with loss %f, received pwr %f" % (worker_id, id1, id2, status, loss, 23 + 16 + 16 - loss)
+                # if status > 0:
+                #     print "Worker %d: %s to %s has status %d with loss %f, received pwr %f" % (worker_id, id1, id2, status, loss, 23 + 16 + 16 - loss)
 
 if __name__ == '__main__':
     n_query = int(sys.argv[1])
