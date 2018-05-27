@@ -38,6 +38,7 @@ class MT_Terrain():
             for line in link_csv:
                 already_proc.add((int(line[0]), int(line[1])))
             buildings_pair = buildings_pair - already_proc
+        print "%d links left to estimate"%len(buildings_pair)
         chunk_size = len(buildings_pair)/n_querier
         chunks = list(chunked(buildings_pair, chunk_size))
 
