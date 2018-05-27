@@ -32,12 +32,16 @@ class MT_Terrain():
         self.tcp.putconn(conn, close=True)
         buildings_pair = set(itertools.combinations(gid, 2))
         self.link_filename = "../data/"+tf.dataset+"_links.csv"
-        with open(self.link_filename+"_0", 'rb') as fr:
-            link_csv = csv.reader(fr, delimiter=',')
-            already_proc = set()
-            for line in link_csv:
-                already_proc.add((int(line[0]), int(line[1])))
-            buildings_pair = buildings_pair - already_proc
+        
+        try:
+            with open(self.link_filename+"_0", 'rb') as fr:
+                link_csv = csv.reader(fr, delimiter=',')
+                already_proc = set()
+                for line in link_csv:
+                    already_proc.add((int(line[0]), int(line[1])))
+                buildings_pair = buildings_pair - already_proc
+            except IOError:
+                pass
         print "%d links left to estimate"%len(buildings_pair)
         chunk_size = len(buildings_pair)/n_querier
         chunks = list(chunked(buildings_pair, chunk_size))
@@ -100,7 +104,8 @@ class MT_Terrain():
                 link_ds = Link(profile)
                 loss, status = link.loss_calculator()
                 loss_ds, status_ds = link_ds.loss_calculator(downscale=3)
-            except errors.TopologicalError, ZeroDivisionError:
+            except (errors.TopologicalError, ZeroDivisionError), e:
+                print e
                 loss = 0
                 status = -1
                 loss_ds = 0
