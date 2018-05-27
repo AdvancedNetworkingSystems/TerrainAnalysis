@@ -5,6 +5,7 @@ import numpy
 import os
 import itertools
 import sys
+import csv
 import time
 from shapely import errors
 from random import shuffle
@@ -27,11 +28,19 @@ class MT_Terrain():
         tf.set_workingarea(4.8411, 45.7613, 4.8528, 45.7681)
         buildings = tf.get_buildings()
         gid, h = zip(*buildings)
+        gid = set(gid)
         self.tcp.putconn(conn, close=True)
-        buildings_pair = list(itertools.combinations(gid, 2))
+        buildings_pair = set(itertools.combinations(gid, 2))
+        self.link_filename = "../data/"+tf.dataset+"_links.csv"
+        with open(self.link_filename+"_0", 'rb') as fr:
+            link_csv = csv.reader(fr, delimiter=',')
+            already_proc = set()
+            for line in link_csv:
+                already_proc.add((int(line[0]), int(line[1])))
+            buildings_pair = buildings_pair - already_proc
         chunk_size = len(buildings_pair)/n_querier
         chunks = list(chunked(buildings_pair, chunk_size))
-        self.link_filename = "../data/"+tf.dataset+"_links.csv"
+
         # with open(self.link_filename, 'a') as fl:
         #     print >> fl, "b1,b2,status,loss,status_downscale,loss_downscale"
         self.start_time=time.time()
@@ -65,7 +74,6 @@ class MT_Terrain():
             time.sleep(3)
 
     def queryWorker(self, worker_id, buildings_pairs):
-        print("I am %d"%(worker_id))
         conn = self.tcp.getconn()
         cur = conn.cursor()
         for buildings_pair in buildings_pairs:
@@ -91,7 +99,7 @@ class MT_Terrain():
                 link_ds = Link(profile)
                 loss, status = link.loss_calculator()
                 loss_ds, status_ds = link_ds.loss_calculator(downscale=3)
-            except errors.TopologicalError:
+            except errors.TopologicalError, ZeroDivisionError:
                 loss = 0
                 status = -1
                 loss_ds = 0
