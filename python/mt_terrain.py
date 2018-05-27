@@ -1,10 +1,9 @@
-import threading
+import multiprocessing as mp
 import math
 import psycopg2
 import numpy
 import os
 import itertools
-import Queue
 import sys
 import time
 from shapely import errors
@@ -16,7 +15,7 @@ from more_itertools import chunked
 
 class MT_Terrain():
     def __init__(self, n_querier, n_calc):
-        self.workers_query_result_q = Queue.Queue()
+        self.workers_query_result_q = mp.Queue()
         DSN = "postgresql://gabriel:qwerasdf@192.168.184.102/postgres"
         self.tcp = ThreadedConnectionPool(1, 100, DSN)
         conn = self.tcp.getconn()
@@ -37,16 +36,16 @@ class MT_Terrain():
         #     print >> fl, "b1,b2,status,loss,status_downscale,loss_downscale"
         self.start_time=time.time()
         for i in range(n_querier):
-            t = threading.Thread(target=self.queryWorker, args=[i, chunks[i]])
+            t = mp.Process(target=self.queryWorker, args=[i, chunks[i]])
             self.querier.append(t)
             t.daemon = True
             t.start()
         for i in range(n_calc):
-            t = threading.Thread(target=self.calcWorker, args=[i])
+            t = mp.Process(target=self.calcWorker, args=[i])
             self.calc.append(t)
             t.daemon = True
             t.start()
-        t = threading.Thread(target=self.monitor)
+        t = mp.Process(target=self.monitor)
         t.daemon = True
         t.start()
         [self.querier[i].join() for i in range(n_querier)]
