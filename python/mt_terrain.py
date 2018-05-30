@@ -96,19 +96,19 @@ class MT_Terrain():
             id1 = buildings_pair[0]
             id2 = buildings_pair[1]
             try:
-                profile = tf.profile_osm(id1, id2, p1, p2)
+                profile = tf.profile_osm(id1, id2)
             except ProfileException:
                 profile = None
             try:
-                profile_srtm = tf_srtm.profile_osm(id1, id2, p1, p2)
+                profile_srtm = tf_srtm.profile_osm(id1, id2)
             except ProfileException:
                 profile_srtm = None
             result = {"id1": id1,
                       "id2": id2,
                       "profile": profile,
-                      "profile_srtm": profile_srtm
-                      "p1" = (0.0, self.dict_h[id1]),
-                      "p2" = (tf.distance(id1, id2), self.dict_h[id2])
+                      "profile_srtm": profile_srtm,
+                      "p1": (0.0, self.dict_h[id1]),
+                      "p2": (tf.distance(id1, id2), self.dict_h[id2])
                       }
             self.workers_query_result_q.put(result)
         self.tcp.putconn(conn, close=True)

@@ -21,7 +21,7 @@ class terrain_RF:
         else:
             raise Exception("Dataset not found")
 
-    def profile_osm(self, id1, id2, p1, p2):
+    def profile_osm(self, id1, id2):
         self.cur.execute("""WITH p1 AS(
                             SELECT ST_Centroid(geom) as pt FROM {0}
                             WHERE  gid={2}
