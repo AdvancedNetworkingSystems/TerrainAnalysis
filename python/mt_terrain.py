@@ -24,7 +24,7 @@ class MT_Terrain():
         cur = conn.cursor()
         self.querier = []
         self.calc = []
-        self.go = True
+        self.go = mp.Value('b', True)
         self.dataset = dataset
         self.working_area = working_area
         self.processed_link = mp.Value('i', 0)
@@ -67,7 +67,9 @@ class MT_Terrain():
         t.daemon = True
         t.start()
         [self.querier[i].join() for i in range(n_querier)]
-        self.go = False
+        print "Finished Query"
+        self.go.value = False
+        print "Set false go"
         [self.calc[i].join() for i in range(n_calc)]
 
     def monitor(self):
@@ -82,7 +84,7 @@ class MT_Terrain():
             widgets=widgets,
             max_value=self.tot_link
         ).start()
-        while(self.go):
+        while(self.go.value):
             bar.update(self.processed_link.value, force=True)
             time.sleep(1)
         bar.finish()
@@ -114,10 +116,10 @@ class MT_Terrain():
         self.tcp.putconn(conn, close=True)
 
     def calcWorker(self, worker_id):
-        while(self.go):
+        while(self.go.value):
             # Take ORDER
             if self.workers_query_result_q.qsize() > 3:
-                print self.workers_query_result_q.qsize()
+                print "Warning: the queue is containing %d elements" % (self.workers_query_result_q.qsize())
             order = self.workers_query_result_q.get()
             profile = order["profile"]
             profile_srtm = order["profile_srtm"]

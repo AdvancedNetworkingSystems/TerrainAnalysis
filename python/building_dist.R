@@ -10,9 +10,9 @@ process_heigth <- function(dt){
     theme_bw()+ 
     labs(y = "Density")
   
-  plot(gp_h)
+  #plot(gp_h)
   
-  #descdist(data)
+  descdist(data)
   #plot(fitdist(data, "norm"))
   print(summary(data))
   
@@ -20,20 +20,31 @@ process_heigth <- function(dt){
 
 
 process_links <- function(du){
-  links = du[du$status==3 | du$status ==1,]$loss
-  df3 = data.frame(
-    Loss=links
+  df_srtm = data.frame(
+    Loss=du[(du$status_srtm==3 | du$status_srtm ==1 | du$status_srtm == 0) & du$loss_srtm != 0 ,]$loss_srtm
   )
   
-  gp_h = ggplot(df3, aes(Loss))+
-    geom_histogram(aes(y=..density..), bins = 70) +
-    #stat_function(fun = dlogis, args = list(location = estimate_l[1], scale = estimate_l[2]), col="red") +
-    theme_bw()+ 
+  df_ds = data.frame(
+    Loss = du[(du$status_downscale==3 | du$status_downscale ==1 | du$status_downscale == 0) & du$loss_downscale != 0 ,]$loss_downscale
+  )
+  
+  df = data.frame(
+    Loss = du[(du$status==3 | du$status==1 | du$status== 0) & du$loss!= 0 ,]$loss
+  )
+  
+  gp_h = ggplot(data = df_srtm, aes(Loss))+
+    geom_density(aes(colour="SRTM")) +
+    geom_density(aes(colour="Lidar Downsampled"), data=df_ds) +
+    geom_density(aes(colour="Lidar"), data=df)+
+    scale_colour_manual("", 
+                        breaks = c("SRTM", "Lidar Downsampled", "Lidar"),
+                        values = c("red", "green", "blue")) +
+    theme_bw()+
     labs(y = "Density")
   
   plot(gp_h)
-  descdist(links)
-  plot(fitdist(links, "gamma"))
+  #descdist(links)
+  #plot(fitdist(links, "gamma"))
 }
 
 
@@ -42,32 +53,50 @@ require("ggplot2")
 require("fitdistrplus")
 require("anytime")
 require("corrplot")
+library(reshape2)
 dt <- read.csv('/home/gabriel/WORKS/Megasimulatore/TerrainAnalysis/data/lyon_height.csv')
-du <- read.csv('/home/gabriel/WORKS/Megasimulatore/TerrainAnalysis/data/lyon_all_links_1x1.csv')
+du <- read.csv('/home/gabriel/WORKS/Megasimulatore/TerrainAnalysis/data/lyon_links_srtm_lidar_1x1.csv')
 
 process_heigth(dt)
+
 
 process_links(du)
 
 errors = length(du[du$status_lidar==-1 | du$status_srtm ==-2,]$link)
-status = c('1'=-2, '2'=-1,'3'=0,'4'=1,'5'=3)
+status = c('1'=0,'2'=1,'3'=3)
 
-mat = matrix(nrow=5, ncol=5)
-labels =  c("Key Error","Error", "No LOS", "Los Free", "Fresnel Free")
+mat = matrix(nrow=3, ncol=3)
+labels =  c("No LOS", "Los Free", "Fresnel Free")
 rownames(mat) <-  labels
 colnames(mat) <-  labels
+
+
 len = length(du$link)
 tot = 0
-for(i in seq(1,5)){
-  for(j in seq(1,5)){
-    n_changed = length(du[du$status_lidar_ds==status[[i]] & du$status_srtm==status[[j]],]$link)
+#LIDAR vs DS
+for(i in seq(1,3)){
+  for(j in seq(1,3)){
+    n_changed = length(du[du$status==status[[i]] & du$status_downscale==status[[j]],]$b1)
     mat[i,j] = n_changed
     tot = tot +  n_changed
     print(paste("from status ",labels[[i]]," to status ",labels[[j]],n_changed))
   }
 }
 
-length(du[du$status==-1 & du$status_ds==-1,]$b1)
+#DS vs SRTM
+tot=0
+mat1 = matrix(nrow=3, ncol=3)
+rownames(mat1) <-  labels
+colnames(mat1) <-  labels
+for(i in seq(1,3)){
+  for(j in seq(1,3)){
+    n_changed = length(du[du$status_downscale==status[[i]] & du$status_srtm==status[[j]],]$b1)
+    mat1[i,j] = n_changed
+    tot = tot +  n_changed
+    print(paste("from status ",labels[[i]]," to status ",labels[[j]],n_changed))
+  }
+}
+
 
 
 
