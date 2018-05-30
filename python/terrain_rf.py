@@ -1,9 +1,11 @@
+from link import ProfileException
 class terrain_RF:
-    def __init__(self, cur, dataset, frequency=5):
+    def __init__(self, cur, dataset, working_area=None, frequency=5):
 
         self.srid = '4326'
         self.cur = cur
         self.dataset = dataset
+        self.working_area = working_area
         if self.dataset == 'toscana':
             self.osm_table = 'centro_buildings'
             self.lidar_table = 'lidar_toscana'
@@ -12,13 +14,14 @@ class terrain_RF:
             self.osm_table = 'lyon_buildings'
             self.lidar_table = 'lidar_lyon'
             self.buff = 0.15  # 3-5 point per meter
+        elif self.dataset == 'lyon_srtm':
+            self.osm_table = 'lyon_buildings'
+            self.lidar_table = 'srtm_lyon'
+            self.buff = 12.5  # 1/25 point per meter
         else:
             raise Exception("Dataset not found")
 
-    def set_workingarea(self, xmin, ymin, xmax, ymax):
-        self.working_area = (xmin, ymin, xmax, ymax)
-
-    def profile_osm(self, p1, p2):
+    def profile_osm(self, id1, id2):
         self.cur.execute("""WITH p1 AS(
                             SELECT ST_Centroid(geom) as pt FROM {0}
                             WHERE  gid={2}
@@ -47,17 +50,22 @@ class terrain_RF:
                                 PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, p1.pt, true) as distance
                                 FROM building_pts, p1
                                 )
-                            SELECT lidar.z, lidar.distance  FROM lidar ORDER BY distance;""".format(self.osm_table, self.lidar_table, p1, p2, self.buff))
+                            SELECT DISTINCT on (lidar.distance)
+                            lidar.distance,
+                            lidar.z
+                            FROM lidar ORDER BY lidar.distance;
+                        """.format(self.osm_table, self.lidar_table, id1, id2, self.buff))
         q_result = self.cur.fetchall()
         if self.cur.rowcount == 0:
-            raise Exception("No profile")
+            raise ProfileException("No profile")
         # remove invalid points
         profile = filter(lambda a: a[0] != -9999, q_result)
         # cast everything to float
-        y, d = zip(*profile)
+        d, y = zip(*profile)
         y = [float(i) for i in y]
         d = [float(i) for i in d]
-        return zip(d, y)
+        profile = zip(d, y)
+        return profile
 
     def get_buildings(self):
         self.cur.execute("""SELECT gid, z FROM {0}
