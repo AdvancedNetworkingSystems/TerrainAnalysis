@@ -4,6 +4,11 @@ from random import choice
 import math
 import matplotlib.pyplot as plt
 import copy
+import numpy as np
+
+
+class ProfileException(Exception):
+    pass
 
 
 class Link:
@@ -13,10 +18,14 @@ class Link:
         self.c = 0.299792458  # Gm/s
         self.h1 = h1
         self.h2 = h2
+        if profile is None or len(profile) < 2:
+            raise ProfileException("No profile")
         d, y = zip(*profile)
+        if not all(x < y for x, y in zip(d, d[1:])):
+            raise ProfileException("Not monotonic list")
         self.d = copy.deepcopy(list(d))
         self.y = copy.deepcopy(list(y))
-        self.A = Point(d[1], y[1] + h1)
+        self.A = Point(d[0], y[0] + h1)
         self.B = Point(d[-1], y[-1] + h2)
         self.distance = self.A.distance(self.B)
 
@@ -96,7 +105,6 @@ class Link:
         for line in obstacles:
             tot_dist += line.length
         loss += self.FSPL(self.distance - tot_dist)
-        #print "There are %d obstacles for a length of %f" % (n_obst, tot_dist)
         loss += 9.6 * 2 * n_obst + 0.45 * tot_dist
         return loss
 
@@ -104,7 +112,7 @@ class Link:
         self.f = frequency  # GHz
         self.l = self.c / self.f  # m
         self.apply_earth_curvature()
-        if downscale>0:
+        if downscale > 0:
             self.downscale(downscale)
         self.polygonize()
         self.F60 = self.fresnel(clearance=True)
@@ -130,7 +138,7 @@ class Link:
         
     def plot(self):
         fig, ax = plt.subplots()
-        ax.plot(d, y, label="Terrain profile")
+        ax.plot(self.d, self.y, label="Terrain profile")
         ax.plot((self.A.x, self.B.x), (self.A.y, self.B.y), 'ro', label="Antennas")
         f_x, f_y = self.F.exterior.xy
         ax.plot(f_x, f_y, label='First fresnel zone')
@@ -142,8 +150,8 @@ class Link:
         ax.plot(l_x, l_y, label="Line of Sight")
         plt.xlabel("distance (m)")
         plt.ylabel("height a.s.l. (m)")
-        plt.legend(loc="upper left", bbox_to_anchor=(1,1))
-        if self.status is 2:
+        plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
+        if self.status is 0:
             status_t = "LOS Obstructed"
         elif self.status is 1:
             status_t = "LOS Free"
@@ -154,5 +162,5 @@ class Link:
         text = "LOSS: %fdB\n"%((self.loss))+status_t
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.05, 0.95, text, transform=ax.transAxes, fontsize=14,verticalalignment='top', bbox=props)
-        # plt.axes().set_aspect('equal')
+        #plt.axes().set_aspect('equal')
         plt.show()
