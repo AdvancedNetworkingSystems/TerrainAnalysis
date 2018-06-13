@@ -14,9 +14,11 @@ from link import Link, ProfileException
 from terrain_rf import terrain_RF
 from psycopg2.pool import ThreadedConnectionPool
 from more_itertools import chunked
+import matplotlib.pyplot as plt
+
 
 class MT_Terrain():
-    def __init__(self, n_querier, n_calc, working_area, dataset):
+    def __init__(self, n_querier, n_calc, working_area, dataset, sample_ratio, plot):
         self.workers_query_result_q = mp.Queue()
         DSN = "postgresql://gabriel:qwerasdf@192.168.184.102/postgres"
         self.tcp = ThreadedConnectionPool(1, 100, DSN)
@@ -26,26 +28,23 @@ class MT_Terrain():
         self.calc = []
         self.go = mp.Value('b', True)
         self.dataset = dataset
+        self.sample_ratio = sample_ratio
         self.working_area = working_area
+        self.plot = plot
         self.processed_link = mp.Value('i', 0)
         self._counter_lock = mp.Lock()
         tf = terrain_RF(cur=cur, dataset=self.dataset, working_area=self.working_area)
         buildings = tf.get_buildings()
-        self.dict_h = dict(buildings)
-        gid, h = zip(*buildings)
-        gid = set(gid)
+        self.n_buildings = len(buildings) / sample_ratio
+        self.sim_name = "%s_%d_%d_" % ((self.dataset, self.n_buildings, time.time()))
+        shuffle(buildings)
+        buildings = buildings[:self.n_buildings]
+        self.write_node_latlon(buildings)
+        gid, h, centroid_x, centroid_y = zip(*buildings)
+        self.dict_h = dict(zip(gid, h))
         self.tcp.putconn(conn, close=True)
         buildings_pair = set(itertools.combinations(gid, 2))
-        self.link_filename = "../data/" + tf.dataset + "_links.csv"
-        try:
-            with open(self.link_filename + "_0", 'rb') as fr:
-                link_csv = csv.reader(fr, delimiter=',')
-                already_proc = set()
-                for line in link_csv:
-                    already_proc.add((int(line[0]), int(line[1])))
-                buildings_pair = buildings_pair - already_proc
-        except IOError:
-            pass
+        self.link_filename = "../data/%s_links.csv" % (self.sim_name)
         self.tot_link = len(buildings_pair)
         print "%d links left to estimate" % len(buildings_pair)
         chunk_size = self.tot_link / n_querier
@@ -71,6 +70,14 @@ class MT_Terrain():
         self.go.value = False
         print "Set false go"
         [self.calc[i].join() for i in range(n_calc)]
+
+    def write_node_latlon(self, buildings):
+        gid, h, centroid_x, centroid_y = zip(*buildings)
+        coords = zip(gid, centroid_x, centroid_y)
+        latlong_filename = "../data/%s_latlong.csv" % (self.sim_name)
+        with open(latlong_filename, 'w') as f:
+            for l in coords:
+                print >> f, "%s,%f,%f" % (l)
 
     def monitor(self):
         time.sleep(1)
@@ -129,6 +136,7 @@ class MT_Terrain():
             try:
                 link = Link(profile)
                 loss, status = link.loss_calculator()
+                    
             except (ZeroDivisionError, ProfileException), e:
                 loss = 0
                 status = -1
@@ -151,6 +159,16 @@ class MT_Terrain():
             except ZeroDivisionError, e:
                 status_srtm = -1
                 loss_srtm = 0
+            
+            if status in [1, 3]:
+                if self.plot:
+                    fig = plt.figure()
+                    fig.subplots_adjust(left=0.2, wspace=0.6)
+                    link.plot(fig, 221, "Lidar")
+                    link_ds.plot(fig, 222, "Lidar Downsampled")
+                    link_srtm.plot(fig, 223, "SRTM")
+                    plt.show()
+            
             with self._counter_lock:
                 self.processed_link.value += 1
             with open("%s_%d" % (self.link_filename, worker_id), 'a') as fl:
@@ -161,6 +179,7 @@ class MT_Terrain():
 if __name__ == '__main__':
     n_query = int(sys.argv[1])
     n_calc = int(sys.argv[2])
+    sample_ratio = int(sys.argv[3])
     working_area = (4.8411, 45.7613, 4.8528, 45.7681)
     dataset = 'lyon'
-    mt = MT_Terrain(n_query, n_calc, working_area, dataset)
+    mt = MT_Terrain(n_query, n_calc, working_area, dataset, sample_ratio, False)

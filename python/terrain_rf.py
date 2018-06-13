@@ -68,7 +68,7 @@ class terrain_RF:
         return profile
 
     def get_buildings(self):
-        self.cur.execute("""SELECT gid, z FROM {0}
+        self.cur.execute("""SELECT gid, z, ST_X(ST_Centroid(geom)), ST_Y(ST_Centroid(geom))  FROM {0}
                             WHERE geom && ST_MakeEnvelope({1}, {2}, {3}, {4}, {5})
                         """.format(self.osm_table,
                                    self.working_area[0], self.working_area[1], self.working_area[2], self.working_area[3],
