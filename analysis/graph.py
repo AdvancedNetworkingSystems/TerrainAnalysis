@@ -15,4 +15,4 @@ if __name__ == '__main__':
     for i in components:
         print len(i)
     nx.draw(components[0])
-    plt.show()
+    nx.write_graphml(components[0], argv[1][:-4] + ".graphml")
