@@ -25,5 +25,4 @@ def worker(xy):
 if __name__ == '__main__':
     with Pool(10) as p:
         tuple_space = itertools.product(range(0, xmax, 10), range(0, ymax, 10))
-        print(list(tuple_space))
         p.map(worker, tuple_space)
