@@ -1,13 +1,12 @@
 import requests
 import re
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
 import itertools
-
+manager = Manager()
+Global = manager.Namespace()
 bbox = "559497.11594305,4909256.1649248,582907.56720259,4922314.7330716"
 xmax = 1511
 ymax = 978
-
-urls = []
 
 def worker(xy):
     url = "http://www502.regione.toscana.it/wmsraster/com.rt.wms.RTmap/wms?map=wmscartoteca&version=1.3.0\
@@ -19,10 +18,13 @@ def worker(xy):
     match = re.findall('(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])>DSM?', r.text)
     if match:
         url = "{}://{}{}".format(*match[0])
-        print(url)
-    
+        return url
 
 if __name__ == '__main__':
     with Pool(10) as p:
         tuple_space = itertools.product(range(0, xmax, 10), range(0, ymax, 10))
-        p.map(worker, tuple_space)
+        urls = p.map(worker, tuple_space)
+        urls = set(urls)
+        for u in urls:
+            if u:
+                print(u)
