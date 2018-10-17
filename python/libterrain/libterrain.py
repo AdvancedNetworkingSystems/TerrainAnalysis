@@ -1,64 +1,53 @@
 from psycopg2.pool import ThreadedConnectionPool
-from building import Building
 from link import Link
 import random
+from sqlalchemy import create_engine, and_
+from sqlalchemy.orm import sessionmaker
+from geoalchemy2.functions import GenericFunction
+from geoalchemy2 import Geometry
+from geoalchemy2.shape import to_shape
+import shapely
 
+from building import Building_CTR
+
+class ST_MakeEnvelope(GenericFunction):
+    name = 'ST_MakeEnvelope'
+    type = Geometry
 
 class terrain():
-    def __init__(self, DSN, working_area, dataset):
+    def __init__(self, DSN, working_area):
         self.DSN = DSN
         self.working_area = working_area
-        self.dataset = dataset
         # Connection to PSQL
         self.tcp = ThreadedConnectionPool(1, 100, DSN)
         conn = self.tcp.getconn()
         self.cur = conn.cursor()
+        engine = create_engine(DSN, echo=False)
+        Session = sessionmaker(bind=engine)
+        self.session = Session()
         self.srid = '4326'
-        self.dataset = dataset
         self.working_area = working_area
         self._set_dataset()
-        self._get_buildings()
+        self._get_buildings_ctr(codici=['0201','0202'])
 
     def _set_dataset(self):
-        if self.dataset == 'toscana':
-            self.osm_table = 'centro_buildings'
-            self.lidar_table = 'lidar_toscana'
-            self.buff = 0.5  # 1 point per meter
-        elif self.dataset == 'lyon':
-            self.osm_table = 'lyon_buildings'
-            self.lidar_table = 'lidar_lyon'
-            self.buff = 0.15  # 3-5 point per meter
-        elif self.dataset == 'lyon_srtm':
-            self.osm_table = 'lyon_buildings'
-            self.lidar_table = 'srtm_lyon'
-            self.buff = 12.5  # 1/25 point per meter
-        else:
-            raise Exception("Dataset not found")
+        self.lidar_table = 'lidar_toscana'
+        self.buff = 0.5  # 1 point per meter
+        
 
-    def _get_buildings(self):
-        self.cur.execute("""SELECT gid, z, ST_X(ST_Centroid(geom)), ST_Y(ST_Centroid(geom))  FROM {0}
-                            WHERE geom && ST_MakeEnvelope({1}, {2}, {3}, {4}, {5})
-                        """.format(self.osm_table,
-                                   self.working_area[0], self.working_area[1], self.working_area[2], self.working_area[3],
-                                   self.srid))
-        self.buildings = []
-        for b in self.cur:
-            self.buildings.append(Building(b))
+    def _get_buildings_ctr(self, codici):
+        self.buildings = self.session.query(Building_CTR) \
+            .filter(and_(Building_CTR.codice.in_(codici),
+                         Building_CTR.geom.intersects(ST_MakeEnvelope(*self.working_area))
+                         )
+                    ).all()
 
     def get_building(self):
         return random.choice(self.buildings)
     
-    def _profile_osm(self, id1, id2):
-        self.cur.execute("""WITH p1 AS(
-                            SELECT ST_Centroid(geom) as pt FROM {0}
-                            WHERE  gid={2}
-                            ),
-                            p2 as(
-                                SELECT ST_Centroid(geom) as pt FROM {0}
-                                WHERE  gid={3}
-                            ),
-                            buffer AS(
-                                SELECT ST_Buffer_Meters(ST_MakeLine(p1.pt, p2.pt), {4}) AS line FROM p1,p2
+    def _profile_osm(self, p1, p2):
+        self.cur.execute("""WITH buffer AS(
+                                SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
                             ),
                             lidar AS(
                                 WITH
@@ -74,14 +63,14 @@ class terrain():
                                 ON ST_Intersects(line, pts::geometry)
                                 )
                                 SELECT
-                                PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, p1.pt, true) as distance
-                                FROM building_pts, p1
+                                PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, ST_GeomFromText('{2}', {0}), true) as distance
+                                FROM building_pts
                                 )
                             SELECT DISTINCT on (lidar.distance)
                             lidar.distance,
                             lidar.z
                             FROM lidar ORDER BY lidar.distance;
-                        """.format(self.osm_table, self.lidar_table, id1, id2, self.buff))
+                        """.format(self.srid, self.lidar_table, p1, p2, self.buff))
         q_result = self.cur.fetchall()
         if self.cur.rowcount == 0:
             raise ProfileException("No profile")
@@ -91,23 +80,24 @@ class terrain():
         d, y = zip(*profile)
         y = [float(i) for i in y]
         d = [float(i) for i in d]
-        profile = zip(d, y)
+        profile = list(zip(d, y))
         return profile
         
-    def get_loss(self, b1, b2):
-        profile = self._profile_osm(b1.gid, b2.gid)
+    def get_loss(self, b1, b2, h1=2, h2=2):
+        p1 = to_shape(b1.geom).centroid.wkt
+        p2 = to_shape(b2.geom).centroid.wkt
+        profile = self._profile_osm(p1, p2)
         try:
-            link = Link(profile)
-        except (ZeroDivisionError, ProfileException), e:
+            link = Link(profile, h1, h2)
+        except (ZeroDivisionError, ProfileException) as e:
             return -1
         return link.loss
 
 if __name__ == '__main__':
-    DSN = "postgresql://gabriel:qwerasdf@192.168.184.102/postgres"
-    #DSN = "postgresql://dboperator:pippo123@192.168.160.11/terrain_ans"
-    working_area = (4.8411, 45.7613, 4.8528, 45.7681)
-    dataset = 'lyon'
-    t = terrain(DSN, working_area, dataset)
+    DSN = "postgresql://dboperator:secret@192.168.160.11/terrain_ans"
+    working_area = [11.26127, 43.77333, 11.27136, 43.76695]
+    t = terrain(DSN, working_area)
     b1 = t.get_building()
     b2 = t.get_building()
+    print(b1)
     print(t.get_loss(b1, b2))

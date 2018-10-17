@@ -1,15 +1,28 @@
-class Building():
-    def __init__(self, gid, x, y, z):
-        self.gid = gid
-        self. x = x
-        self.y = y
-        self.z = z
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Float
+from geoalchemy2 import Geometry
+from geoalchemy2.shape import to_shape
+import shapely
 
-    def __init__(self, tup):
-        self.gid = tup[0]
-        self.x = tup[2]
-        self.y = tup[3]
-        self.z = tup[1]
+Base = declarative_base()
+
+
+class Building_CTR(Base):
+    __tablename__ = 'ctr_firenze'
+    gid = Column(Integer, primary_key=True)
+    foglio = Column(String)
+    codice = Column(String)
+    record = Column(Integer)
+    topon = Column(String)
+    area = Column(Float)
+    identif = Column(String)
+    geom = Column(Geometry('POLYGON'))
 
     def __str__(self):
-        return "Building ID: {0} \nLongitude: {1} \nLatitude: {2} \nHeigth of the roof: {3}".format(self.gid, self.x, self.y, self.z)
+        return "Building ID: {0} \nLongitude: {1} \nLatitude: {2}".format(self.gid, self.coords().x, self.coords().y)
+
+    def shape(self):
+        return to_shape(self.geom)
+
+    def coords(self):
+        return self.shape().centroid
