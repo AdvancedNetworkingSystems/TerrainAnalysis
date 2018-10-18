@@ -126,7 +126,7 @@ class terrain():
         return link.loss
 
 if __name__ == '__main__':
-    DSN = "postgresql://dboperator:ninux@192.168.160.11/terrain_ans"
+    DSN = "postgresql://dboperator:secret@192.168.160.11/terrain_ans"
     #dataset = "firenze"
     #dataset = "pontermoli"
     dataset = "quarrata"
