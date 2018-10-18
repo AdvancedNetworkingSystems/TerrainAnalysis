@@ -19,7 +19,7 @@ class Building_CTR(Base):
     geom = Column(Geometry('POLYGON'))
 
     def __str__(self):
-        return "Building ID: {0} \nLongitude: {1} \nLatitude: {2}".format(self.gid, self.coords().x, self.coords().y)
+        return "Building ID: {0} \nLongitude: {1} \nLatitude: {2} \nCodice: {3}".format(self.gid, self.coords().x, self.coords().y, self.codice)
 
     def shape(self):
         return to_shape(self.geom)
