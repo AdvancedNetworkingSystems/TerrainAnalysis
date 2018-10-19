@@ -81,4 +81,4 @@ while run:
         #plt.show()
         plt.pause(0.001)
         
-nx.write_graphml(g, "graph1.graphml")
+nx.write_graphml(infected_graph, "graph1.graphml")
