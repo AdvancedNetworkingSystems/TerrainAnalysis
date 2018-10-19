@@ -76,9 +76,13 @@ while run:
         #fig.clf()
         ax.imshow(img, extent=[10.9657, 10.9927, 43.8394, 43.8584])
         nx.draw(infected_graph, pos=pos, ax=ax)
-        #nx.draw_networkx_labels(infected_graph, pos=infected_dict)
         plt.draw()
         #plt.show()
         plt.pause(0.001)
-        
+
+#remove tuple attribute to save the graphml and save x and y separately
+for node in infected_graph:
+    infected_graph.node[node]['x'] = infected_graph.node[node]['pos'][0]
+    infected_graph.node[node]['y'] = infected_graph.node[node]['pos'][1]
+    del infected_graph.node[node]['pos']
 nx.write_graphml(infected_graph, "graph1.graphml")
