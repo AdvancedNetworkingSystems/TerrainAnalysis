@@ -8,8 +8,10 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 
-from link import Link, ProfileException
-from building import Building_CTR
+import matplotlib.pyplot as plt
+
+from libterrain.link import Link, ProfileException
+from libterrain.building import Building_CTR
 
 
 class ST_MakeEnvelope(GenericFunction):
@@ -31,7 +33,7 @@ class terrain():
         self.srid = '4326'
         self._set_dataset()
         self.set_building_filter(codici)
-        self._get_buildings_ctr()
+        #self._get_buildings_ctr()
         
     def _profile_osm(self, p1, p2):
         self.cur.execute("""WITH buffer AS(
@@ -91,6 +93,26 @@ class terrain():
     def set_building_filter(self, codici):
         """Set the filter for the building from CTR.
         codici: set of strings representing the codici
+            '0201': Civil Building
+            '0202': Industrial Building
+            '0203': Religion Building
+            '0204': Unfinished Building
+            '0206': Portico
+            '0207': Baracca/Edicola
+            '0208': Tettoia/Pensilina
+            '0209': Tendone Pressurizzato
+            '0210': Serra 
+            '0211': Casello / Stazione Ferroviaria
+            '0212': Centrale Elettrica/Sottostazione
+            '0215': Capannone Vivaio
+            '0216': Stalla/ Fienile
+            '0223': Complesso Ospedaliero
+            '0224': Complesso Scolastico
+            '0225': Complesso Sportivo
+            '0226': Complesso Religioso
+            '0227': Complesso Sociale
+            '0228': Complesso Cimiteriale
+            '0229': Campeggio/ Villaggio
         """
         self.codici = codici
 
@@ -99,15 +121,23 @@ class terrain():
         """
         return random.choice(self.buildings)
 
-    def get_building(self, point):
-        """Get the building around a point
-        point: shapely Point object
+    def get_building_gid(self, gid):
+        """Get building by gid
+        gid: identifier of building
         """
-        wkb_element = from_shape(point, srid=self.srid)
+        building = self.session.query(Building_CTR) \
+            .filter_by(gid=gid).first()
+        return building
+
+    def get_building(self, shape):
+        """Get the buildings intersecting a shape
+        point: shapely object
+        """
+        wkb_element = from_shape(shape, srid=self.srid)
         building = self.session.query(Building_CTR) \
             .filter(and_(Building_CTR.codice.in_(self.codici),
                          Building_CTR.geom.intersects(wkb_element)))
-        return building.first()
+        return building.all()
 
     def get_loss(self, b1, b2, h1=2, h2=2):
         """Calculate the path loss between two buildings_pair
@@ -121,6 +151,9 @@ class terrain():
         try:
             profile = self._profile_osm(p1, p2)
             link = Link(profile, h1, h2)
+            # fig = plt.figure()
+            # link.plot(fig, pltid=221, text="prova")
+            # plt.show()
         except (ZeroDivisionError, ProfileException) as e:
             return -1
         return link.loss

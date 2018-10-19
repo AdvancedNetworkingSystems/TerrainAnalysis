@@ -1,0 +1,6 @@
+psycopg2
+numpy
+csv
+matplotlib
+shapely
+itertools
