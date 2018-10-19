@@ -10,8 +10,8 @@ from shapely.geometry import Point
 
 import matplotlib.pyplot as plt
 
-from libterrain_ans.link import Link, ProfileException
-from libterrain_ans.building import Building_CTR
+from libterrain.link import Link, ProfileException
+from libterrain.building import Building_CTR
 
 
 class ST_MakeEnvelope(GenericFunction):
