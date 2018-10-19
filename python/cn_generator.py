@@ -24,68 +24,73 @@ deproject = partial(
 DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
 dataset = "quarrata"
 
-# initialize from gateway 
-infected = []
-susceptible = set()
-infected_graph = nx.Graph()
-t = terrain(DSN, dataset, ['0201'])
-gateway = t.get_building_gid(gid=54922)
-infected.append(gateway)
-infected_graph.add_node(gateway.gid, pos=gateway.xy())
-print("The gateway is " + repr(gateway))
-susceptible_buffer = transform(project, gateway.shape()).buffer(500)
-susceptible = set(t.get_building(transform(deproject, susceptible_buffer))) - set(infected)
-run = True
-fig, ax = plt.subplots()
-img = plt.imread("quarrata.png")
-ax.imshow(img, extent=[10.9657, 10.9927, 43.8394, 43.8584])
-fig, ax = plt.subplots()
-img = plt.imread("quarrata.png")
-plt.ion()
-plt.show()
+#@profile
+def main():
+    # initialize from gateway 
+    infected = []
+    susceptible = set()
+    infected_graph = nx.Graph()
+    t = terrain(DSN, dataset, ['0201'])
+    gateway = t.get_building_gid(gid=54922)
+    infected.append(gateway)
+    infected_graph.add_node(gateway.gid, pos=gateway.xy())
+    print("The gateway is " + repr(gateway))
+    susceptible_buffer = transform(project, gateway.shape()).buffer(500)
+    susceptible = set(t.get_building(transform(deproject, susceptible_buffer))) - set(infected)
+    run = True
+    # fig, ax = plt.subplots()
+    # img = plt.imread("quarrata.png")
+    # ax.imshow(img, extent=[10.9657, 10.9927, 43.8394, 43.8584])
+    # fig, ax = plt.subplots()
+    # img = plt.imread("quarrata.png")
+    # plt.ion()
+    # plt.show()
 
-while run:
-    # pick random node from susceptible set and check connectivity with network
-    new_node = random.sample(susceptible, 1)[0]
-    susceptible.remove(new_node)
-    visible_links = []
-    for i in infected:
-        loss = t.get_loss(i, new_node, h1=2, h2=2)
-        if loss > 0:
-            #print("Loss between %d and %d is %f" % (i.gid, new_node.gid, loss))
-            visible_links.append((new_node, i, loss))
-    # if there's at least one vaild link add the node to the network
-    if len(visible_links) > 0:
-        visible_links.sort(key=lambda x: x[2], reverse=True)
-        link = visible_links.pop()
-        infected.append(link[0])
-        infected_graph.add_node(link[0].gid, pos=link[0].xy())
-        infected_graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-        if len(visible_links) > 1:
+    while run:
+        # pick random node from susceptible set and check connectivity with network
+        new_node = random.sample(susceptible, 1)[0]
+        susceptible.remove(new_node)
+        visible_links = []
+        for i in infected:
+            loss = t.get_loss(i, new_node, h1=2, h2=2)
+            if loss > 0:
+                #print("Loss between %d and %d is %f" % (i.gid, new_node.gid, loss))
+                visible_links.append((new_node, i, loss))
+        # if there's at least one vaild link add the node to the network
+        if len(visible_links) > 0:
+            visible_links.sort(key=lambda x: x[2], reverse=True)
             link = visible_links.pop()
+            infected.append(link[0])
+            infected_graph.add_node(link[0].gid, pos=link[0].xy())
             infected_graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-        #re-calculate the buffer area
-        geoms = [g.shape() for g in infected]
-        susceptible_buffer = transform(project, cascaded_union(geoms)).buffer(200)
-        print("Area of susceptible nodes: %f"%(susceptible_buffer.area))
-                # create list of geoms
-        #get a new set of susceptible nodes from the larger buffer
-        susceptible = set(t.get_building(transform(deproject, susceptible_buffer))) - set(infected)
-        # stop condition
-        if len(infected) > 100:
-            run = False
-        pos=nx.get_node_attributes(infected_graph, 'pos')
-        
-        #fig.clf()
-        ax.imshow(img, extent=[10.9657, 10.9927, 43.8394, 43.8584])
-        nx.draw(infected_graph, pos=pos, ax=ax)
-        plt.draw()
-        #plt.show()
-        plt.pause(0.001)
+            if len(visible_links) > 1:
+                link = visible_links.pop()
+                infected_graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+            #re-calculate the buffer area
+            geoms = [g.shape() for g in infected]
+            susceptible_buffer = transform(project, cascaded_union(geoms)).buffer(200)
+            print("Area of susceptible nodes: %f"%(susceptible_buffer.area))
+                    # create list of geoms
+            #get a new set of susceptible nodes from the larger buffer
+            susceptible = set(t.get_building(transform(deproject, susceptible_buffer))) - set(infected)
+            # stop condition
+            if len(infected) > 10:
+                run = False
+            #pos=nx.get_node_attributes(infected_graph, 'pos')
+            
+            # #fig.clf()
+            # ax.imshow(img, extent=[10.9657, 10.9927, 43.8394, 43.8584])
+            # nx.draw(infected_graph, pos=pos, ax=ax)
+            # plt.draw()
+            # #plt.show()
+            # plt.pause(0.001)
 
-#remove tuple attribute to save the graphml and save x and y separately
-for node in infected_graph:
-    infected_graph.node[node]['x'] = infected_graph.node[node]['pos'][0]
-    infected_graph.node[node]['y'] = infected_graph.node[node]['pos'][1]
-    del infected_graph.node[node]['pos']
-nx.write_graphml(infected_graph, "graph-%d.graphml"%(time.time()))
+    #remove tuple attribute to save the graphml and save x and y separately
+    for node in infected_graph:
+        infected_graph.node[node]['x'] = infected_graph.node[node]['pos'][0]
+        infected_graph.node[node]['y'] = infected_graph.node[node]['pos'][1]
+        del infected_graph.node[node]['pos']
+    nx.write_graphml(infected_graph, "graph-%d.graphml"%(time.time()))
+
+if __name__ == '__main__':
+    main()
