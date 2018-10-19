@@ -21,8 +21,14 @@ class Building_CTR(Base):
     def __str__(self):
         return "Building ID: {0} \nLongitude: {1} \nLatitude: {2} \nCodice: {3}".format(self.gid, self.coords().x, self.coords().y, self.codice)
 
+    def __repr__(self):
+        return str(self.gid)
+
     def shape(self):
         return to_shape(self.geom)
 
     def coords(self):
         return self.shape().centroid
+    
+    def xy(self):
+        return (self.coords().x, self.coords().y)
