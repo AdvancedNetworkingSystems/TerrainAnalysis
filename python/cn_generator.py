@@ -74,7 +74,7 @@ def main():
             #get a new set of susceptible nodes from the larger buffer
             susceptible = set(t.get_building(transform(deproject, susceptible_buffer))) - set(infected)
             # stop condition
-            if len(infected) > 10:
+            if len(infected) > 100:
                 run = False
             #pos=nx.get_node_attributes(infected_graph, 'pos')
             
