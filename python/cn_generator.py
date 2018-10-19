@@ -6,6 +6,7 @@ from shapely.geometry.polygon import Polygon
 import pyproj
 import shapely
 import random
+import time
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -63,16 +64,18 @@ while run:
         if len(visible_links) > 1:
             link = visible_links.pop()
             infected_graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-
+        #re-calculate the buffer area
         geoms = [g.shape() for g in infected]
         susceptible_buffer = transform(project, cascaded_union(geoms)).buffer(200)
         print("Area of susceptible nodes: %f"%(susceptible_buffer.area))
                 # create list of geoms
+        #get a new set of susceptible nodes from the larger buffer
         susceptible = set(t.get_building(transform(deproject, susceptible_buffer))) - set(infected)
-        print(infected)
-        pos=nx.get_node_attributes(infected_graph, 'pos')
+        # stop condition
         if len(infected) > 100:
             run = False
+        pos=nx.get_node_attributes(infected_graph, 'pos')
+        
         #fig.clf()
         ax.imshow(img, extent=[10.9657, 10.9927, 43.8394, 43.8584])
         nx.draw(infected_graph, pos=pos, ax=ax)
@@ -85,4 +88,4 @@ for node in infected_graph:
     infected_graph.node[node]['x'] = infected_graph.node[node]['pos'][0]
     infected_graph.node[node]['y'] = infected_graph.node[node]['pos'][1]
     del infected_graph.node[node]['pos']
-nx.write_graphml(infected_graph, "graph1.graphml")
+nx.write_graphml(infected_graph, "graph-%d.graphml"%(time.time()))
