@@ -25,8 +25,8 @@ class terrain():
         self.dataset = dataset
         # Connection to PSQL
         self.tcp = ThreadedConnectionPool(1, 100, DSN)
-        conn = self.tcp.getconn()
-        self.cur = conn.cursor()
+        # conn = self.tcp.getconn()
+        # self.cur = conn.cursor()
         engine = create_engine(DSN, echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
@@ -36,7 +36,9 @@ class terrain():
         #self._get_buildings_ctr()
         
     def _profile_osm(self, p1, p2):
-        self.cur.execute("""WITH buffer AS(
+        conn = self.tcp.getconn()
+        cur = conn.cursor()
+        cur.execute("""WITH buffer AS(
                                 SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
                             ),
                             lidar AS(
@@ -61,8 +63,8 @@ class terrain():
                             lidar.z
                             FROM lidar ORDER BY lidar.distance;
                         """.format(self.srid, self.lidar_table, p1, p2, self.buff))
-        q_result = self.cur.fetchall()
-        if self.cur.rowcount == 0:
+        q_result = cur.fetchall()
+        if cur.rowcount == 0:
             raise ProfileException("No profile")
         # remove invalid points
         profile = filter(lambda a: a[0] != -9999, q_result)
@@ -146,8 +148,8 @@ class terrain():
         h1: height of the antenna on the roof of b1
         h2: height of the antenna on the roof of b2
         """
-        p1 = to_shape(b1.geom).centroid.wkt
-        p2 = to_shape(b2.geom).centroid.wkt
+        p1 = b1.shape().centroid.wkt
+        p2 = b2.shape().centroid.wkt
         try:
             profile = self._profile_osm(p1, p2)
             link = Link(profile, h1, h2)
