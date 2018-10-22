@@ -11,7 +11,7 @@ class Growing_network(CN_Generator):
     def __init__(self, dataset, args=None, DSN=None):
         self.sb = Susceptible_Buffer()
         CN_Generator.__init__(self, dataset, DSN=None)
-        self.parser.add_argument('-n', help="number of nodes", type=int)
+        self.parser.add_argument('-n', help="number of nodes", type=int, required=True)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
 
