@@ -2,11 +2,41 @@ from multiprocessing import Pool
 import random
 import matplotlib.pyplot as plt
 from cn_generator import CN_Generator
-from strategies import growing_network as gn
+from strategies.growing_network import Growing_network
+import argparse
+import pkgutil
+
+
+STRATEGIES = {
+        'growing_network': Growing_network,
+        }
+
+def parse_args():
+    s_list = STRATEGIES.keys()
+
+    datasets = ["quarrata"]
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", help="a strategy to be used",
+                        choices=s_list, required=True)
+
+    parser.add_argument("-d", help="a data set from the available ones",
+                        choices=datasets, required=True)
+
+    parser.add_argument("--min_dev",
+                        help="minimum number of devices per node",
+                        type=int, const=1, nargs='?', default=1)
+
+    parser.add_argument("--max_dev",
+                        help="maximum number of devices per node",
+                        type=int, const=float('inf'), nargs='?',
+                        default=float('inf'))
+
+    args, unknown = parser.parse_known_args()
+    return args, unknown
+
 
 if __name__ == '__main__':
-    DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
-    dataset = "quarrata"
-    g = gn.Growing_network(DSN, dataset)
-    g.main()
-
+    args, unknown_args = parse_args()
+    s = STRATEGIES.get(args.s)(args.d, args=unknown_args)
+    s.main()
