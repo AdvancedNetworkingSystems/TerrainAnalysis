@@ -1,32 +1,11 @@
-from shapely.ops import transform, cascaded_union
-from functools import partial
-import pyproj
 from multiprocessing import Pool
 import random
 import matplotlib.pyplot as plt
 from cn_generator import CN_Generator
+from misc import Susceptible_Buffer
 
 
-class Susceptible_Buffer():
-    project = partial(
-        pyproj.transform,
-        pyproj.Proj(init='epsg:4326'),  # source coordinate system
-        pyproj.Proj(init='epsg:3003'))  # destination coordinate system
-
-    deproject = partial(
-        pyproj.transform,
-        pyproj.Proj(init='epsg:3003'),  # source coordinate system
-        pyproj.Proj(init='epsg:4326'))  # destination coordinate system
-
-    def set_shape(self, shape):
-        self.orig_shape = shape
-        self.shape = transform(self.project, shape)
-
-    def get_buffer(self, m):
-        return transform(self.deproject, self.shape.buffer(m))
-
-
-class CN_Generator_Strategy1(CN_Generator):
+class Growing_network(CN_Generator):
 
     def __init__(self, DSN, dataset):
         self.sb = Susceptible_Buffer()
@@ -42,7 +21,7 @@ class CN_Generator_Strategy1(CN_Generator):
 
     def get_susceptibles(self):
         geoms = [g.shape() for g in self.infected]
-        self.sb.set_shape(cascaded_union(geoms))
+        self.sb.set_shape(geoms)
         self.susceptible = set(self.t.get_building(self.sb.get_buffer(1000))) - set(self.infected)
 
     def stop_condition(self):
@@ -81,10 +60,3 @@ class CN_Generator_Strategy1(CN_Generator):
                 self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
             return True
         return False
-
-
-if __name__ == '__main__':
-    DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
-    dataset = "quarrata"
-    g = CN_Generator_Strategy1(DSN, dataset)
-    g.main()
