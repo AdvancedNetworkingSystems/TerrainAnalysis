@@ -33,7 +33,7 @@ class Growing_network(CN_Generator):
         loss = self.t.get_loss(destination, source, h1=2, h2=2)
         if loss > 0:
             # print("Loss between %d and %d is %f" % (i.gid, new_node.gid, loss))
-            return (destination, source, loss)
+            return (source, destination, loss)
 
     def check_connectivity(self, new_node):
         visible_links = []
