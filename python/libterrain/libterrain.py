@@ -10,8 +10,6 @@ from shapely.geometry import Point
 
 import matplotlib.pyplot as plt
 
-# from link import Link, ProfileException
-# from building import Building_CTR
 from libterrain.link import Link, ProfileException
 from libterrain.building import Building_CTR
 

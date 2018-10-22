@@ -7,14 +7,22 @@ import random
 import time
 import networkx as nx
 import matplotlib.pyplot as plt
+import argparse
 
 
 class CN_Generator():
-    def __init__(self, DSN, dataset):
+
+    DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
+
+    def __init__(self, dataset, DSN=None):
         self.infected = []
         self.susceptible = set()
         self.graph = nx.Graph()
-        self.t = terrain(DSN, dataset, ['0201'])
+        self.parser = argparse.ArgumentParser()
+        if not DSN:
+            self.t = terrain(self.DSN, dataset, ['0201'])
+        else:
+            self.t = terrain(DSN, dataset, ['0201'])
         gateway = self.get_gateway()
         self.infected.append(gateway)
         self.graph.add_node(gateway.gid, pos=gateway.xy())
@@ -38,8 +46,8 @@ class CN_Generator():
 
     def save_graph(self):
         for node in self.graph:
-            self.graph.node[node]['x'] = infected_graph.node[node]['pos'][0]
-            self.graph.node[node]['y'] = infected_graph.node[node]['pos'][1]
+            self.graph.node[node]['x'] = self.graph.node[node]['pos'][0]
+            self.graph.node[node]['y'] = self.graph.node[node]['pos'][1]
             del self.graph.node[node]['pos']
         nx.write_graphml(self.graph, "graph-%d.graphml" % (time.time()))
 
