@@ -8,7 +8,7 @@ import time
 import networkx as nx
 import matplotlib.pyplot as plt
 import argparse
-
+import mplleaflet
 
 class CN_Generator():
 
@@ -54,6 +54,7 @@ class CN_Generator():
         nx.write_graphml(self.graph, self.filename)
 
     def main(self):
+        display_plot = True
         while not self.stop_condition():
             # pick random node
             new_node = self.get_newnode()
@@ -62,5 +63,12 @@ class CN_Generator():
                 # update area of susceptible nodes
                 self.get_susceptibles()
                 print("Number of nodes:%d" % (len(self.graph.nodes)))
+                nx.draw(self.graph, pos=nx.get_node_attributes(self.graph, 'pos'))
+                plt.draw()
+                if display_plot:
+                    mplleaflet.show()
+                    display_plot = False
+                else:
+                    mplleaflet.save_html()
         # save result
         self.save_graph()
