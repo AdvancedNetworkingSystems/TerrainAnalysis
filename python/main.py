@@ -14,7 +14,7 @@ STRATEGIES = {
 def parse_args():
     s_list = STRATEGIES.keys()
 
-    datasets = ["quarrata"]
+    datasets = ["quarrata", "firenze", "pontremoli"]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", help="a strategy to be used",

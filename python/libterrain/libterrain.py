@@ -11,7 +11,7 @@ from shapely.geometry import Point
 import matplotlib.pyplot as plt
 
 from libterrain.link import Link, ProfileException
-from libterrain.building import Building_CTR
+from libterrain.building import Building_CTR, Building_OSM
 
 
 class ST_MakeEnvelope(GenericFunction):
@@ -20,21 +20,46 @@ class ST_MakeEnvelope(GenericFunction):
 
 
 class terrain():
-    def __init__(self, DSN, dataset, codici):
+    def __init__(self, DSN, dataset, ple):
         self.DSN = DSN
         self.dataset = dataset
+        self.ple = ple
         # Connection to PSQL
         self.tcp = ThreadedConnectionPool(1, 100, DSN)
         conn = self.tcp.getconn()
         self.cur = conn.cursor()
-        engine = create_engine(DSN, echo=False)
+        engine = create_engine(DSN, client_encoding='utf8', echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.srid = '4326'
         self._set_dataset()
-        self.set_building_filter(codici)
-        #self._get_buildings_ctr()
-        
+
+    def _set_building_filter(self, codici):
+        """Set the filter for the building from CTR.
+        codici: set of strings representing the codici
+            '0201': Civil Building
+            '0202': Industrial Building
+            '0203': Religion Building
+            '0204': Unfinished Building
+            '0206': Portico
+            '0207': Baracca/Edicola
+            '0208': Tettoia/Pensilina
+            '0209': Tendone Pressurizzato
+            '0210': Serra
+            '0211': Casello / Stazione Ferroviaria
+            '0212': Centrale Elettrica/Sottostazione
+            '0215': Capannone Vivaio
+            '0216': Stalla/ Fienile
+            '0223': Complesso Ospedaliero
+            '0224': Complesso Scolastico
+            '0225': Complesso Sportivo
+            '0226': Complesso Religioso
+            '0227': Complesso Sociale
+            '0228': Complesso Cimiteriale
+            '0229': Campeggio/ Villaggio
+        """
+        self.codici = codici
+
     def _profile_osm(self, p1, p2):
         self.cur.execute("""WITH buffer AS(
                                 SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
@@ -78,66 +103,14 @@ class terrain():
         self.buff = 0.5  # 1 point per metre
         if self.dataset == "firenze":
             self.working_area = [11.1610, 43.8487, 11.3026, 43.7503]
+            self.building_class = Building_OSM
         elif self.dataset == "pontremoli":
             self.working_area = [9.7848, 44.4507, 9.9864, 44.3324]
+            self.building_class = Building_CTR
+            self._set_building_filter(['0201'])
         elif self.dataset == "quarrata":
             self.working_area = [10.9165, 43.8987, 11.0816, 43.7995]
-
-    def _get_buildings_ctr(self):
-        self.buildings = self.session.query(Building_CTR) \
-            .filter(and_(Building_CTR.codice.in_(self.codici),
-                         Building_CTR.geom.intersects(ST_MakeEnvelope(*self.working_area))
-                         )
-                    ).all()
-
-    def set_building_filter(self, codici):
-        """Set the filter for the building from CTR.
-        codici: set of strings representing the codici
-            '0201': Civil Building
-            '0202': Industrial Building
-            '0203': Religion Building
-            '0204': Unfinished Building
-            '0206': Portico
-            '0207': Baracca/Edicola
-            '0208': Tettoia/Pensilina
-            '0209': Tendone Pressurizzato
-            '0210': Serra 
-            '0211': Casello / Stazione Ferroviaria
-            '0212': Centrale Elettrica/Sottostazione
-            '0215': Capannone Vivaio
-            '0216': Stalla/ Fienile
-            '0223': Complesso Ospedaliero
-            '0224': Complesso Scolastico
-            '0225': Complesso Sportivo
-            '0226': Complesso Religioso
-            '0227': Complesso Sociale
-            '0228': Complesso Cimiteriale
-            '0229': Campeggio/ Villaggio
-        """
-        self.codici = codici
-
-    def get_random_building(self):
-        """Extract a random building from the buildings of the working area
-        """
-        return random.choice(self.buildings)
-
-    def get_building_gid(self, gid):
-        """Get building by gid
-        gid: identifier of building
-        """
-        building = self.session.query(Building_CTR) \
-            .filter_by(gid=gid).first()
-        return building
-
-    def get_building(self, shape):
-        """Get the buildings intersecting a shape
-        point: shapely object
-        """
-        wkb_element = from_shape(shape, srid=self.srid)
-        building = self.session.query(Building_CTR) \
-            .filter(and_(Building_CTR.codice.in_(self.codici),
-                         Building_CTR.geom.intersects(wkb_element)))
-        return building.all()
+            self.building_class = Building_OSM
 
     def get_loss(self, b1, b2, h1=2, h2=2):
         """Calculate the path loss between two buildings_pair
@@ -146,11 +119,11 @@ class terrain():
         h1: height of the antenna on the roof of b1
         h2: height of the antenna on the roof of b2
         """
-        p1 = b1.shape().centroid.wkt
-        p2 = b2.shape().centroid.wkt
+        p1 = b1.coords().wkt
+        p2 = b2.coords().wkt
         try:
             profile = self._profile_osm(p1, p2)
-            link = Link(profile, h1, h2)
+            link = Link(profile, h1, h2, self.ple)
             # fig = plt.figure()
             # link.plot(fig, pltid=221, text="prova")
             # plt.show()
@@ -158,15 +131,8 @@ class terrain():
             return -1
         return link.loss
 
-if __name__ == '__main__':
-    DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
-    #dataset = "firenze"
-    #dataset = "pontermoli"
-    dataset = "quarrata"
-    t = terrain(DSN, dataset, ['0201', '0202'])
-    # p1 = Point(11.2029274, 43.8485573)
-    # b1 = t.get_building(p1, ['0201', '0202'])
-    while 1:
-        b1 = t.get_random_building()
-        b2 = t.get_random_building()
-        print(t.get_loss(b1,b2))
+    def get_building_gid(self, gid):
+        return self.building_class.get_building_gid(self.session, gid)
+
+    def get_building(self, shape):
+        return self.building_class.get_building(self, shape)

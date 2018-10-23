@@ -11,12 +11,21 @@ class Growing_network(CN_Generator):
     def __init__(self, dataset, args=None, DSN=None):
         self.sb = Susceptible_Buffer()
         CN_Generator.__init__(self, dataset, DSN=None)
-        self.parser.add_argument('-n', help="number of nodes", type=int, required=True)
+        self.parser.add_argument('-n', help="number of nodes", type=int,
+                                 required=True)
+        self.parser.add_argument('-e', help="expansion range (in meters), if 0"
+                                 "pick buildings at any range", type=float,
+                                 default=20000)
+        self.parser.add_argument('-b', help="start building id",
+                                 required=True)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
+        self.e = self.args.e
+        self.b = self.args.b
+        self._post_init()
 
     def get_gateway(self):
-        return self.t.get_building_gid(gid=54922)
+        return self.t.get_building_gid(gid=self.b)
 
     def get_newnode(self):
         new_node = random.sample(self.susceptible, 1)[0]
@@ -26,12 +35,13 @@ class Growing_network(CN_Generator):
     def get_susceptibles(self):
         geoms = [g.shape() for g in self.infected]
         self.sb.set_shape(geoms)
-        self.susceptible = set(self.t.get_building(self.sb.get_buffer(1000))) - set(self.infected)
+
+        self.susceptible = set(self.t.get_building(
+                               self.sb.get_buffer(self.e))
+                               ) - set(self.infected)
 
     def stop_condition(self):
-        if len(self.infected) >= self.n:
-            return True
-        return False
+        return len(self.infected) >= self.n
 
     def check_link(self, source, destination):
         loss = self.t.get_loss(destination, source, h1=2, h2=2)
