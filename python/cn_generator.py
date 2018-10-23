@@ -1,5 +1,5 @@
 from libterrain.libterrain import terrain
-from geoalchemy2.shape import to_shape, from_shape
+from geoalchemy2.shape import to_shape
 from shapely.geometry.polygon import Polygon
 from multiprocessing import Pool
 import shapely
@@ -20,9 +20,11 @@ class CN_Generator():
         self.graph = nx.Graph()
         self.parser = argparse.ArgumentParser()
         if not DSN:
-            self.t = terrain(self.DSN, dataset, ['0201'])
+            self.t = terrain(self.DSN, dataset, ple=2.4)
         else:
-            self.t = terrain(DSN, dataset, ['0201'])
+            self.t = terrain(DSN, dataset, ple=2.4)
+
+    def _post_init(self):
         gateway = self.get_gateway()
         self.infected.append(gateway)
         self.graph.add_node(gateway.gid, pos=gateway.xy())

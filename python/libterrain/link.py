@@ -12,8 +12,9 @@ class ProfileException(Exception):
 
 
 class Link:
-    def __init__(self, profile, h1=2, h2=2):
+    def __init__(self, profile, h1=2, h2=2, ple=2):
         # Constants
+        self.ple = ple
         self.R = 6370986  # 6371km
         self.c = 0.299792458  # Gm/s
         self.h1 = h1
@@ -35,13 +36,13 @@ class Link:
         y_curved = [None] * n_points
         for i in range(n_points):
             y_curved[i] = self.y[i] - (math.sqrt(self.d[i]**2 + self.R**2) - self.R)
-        #update point after curvature
+        # update point after curvature
         self.B = Point(self.d[-1], self.y[-1] + self.h2)
         self.distance = self.A.distance(self.B)
         self.y = y_curved
-    
+
     def _downscale(self, downscale):
-        #keep 1 on n points
+        # keep 1 on n points
         old_profile = zip(self.d, self.y)
         profile = []
         for i in range(len(old_profile)):
@@ -50,7 +51,7 @@ class Link:
         self.d, self.y = zip(*profile)
         self.y = list(self.y)
         self.d = list(self.d)
-    
+
     def _polygonize(self):
         min_y = min(self.y) - 10
         self.y.insert(0, min_y)
@@ -77,11 +78,11 @@ class Link:
         d1 = knife.centroid.distance(self.A)
         d2 = knife.centroid.distance(self.B)
         v = knife.height * math.sqrt(2 / self.l * (1 / d1 + 1 / d2))
-        loss = 6.9 + 20 * math.log10(math.sqrt((v - 0.1)**2 + 1) + v - 0.1)
+        loss = 6.9 + 10 * self.ple * math.log10(math.sqrt((v - 0.1)**2 + 1) + v - 0.1)
         return loss
 
     def _FSPL(self, distance):
-        return 20 * math.log10(4 * math.pi * distance / self.l)
+        return 10 * self.ple * math.log10(4 * math.pi * distance / self.l)
 
     def _knife_method(self, knifes):
         loss = 0
@@ -124,7 +125,7 @@ class Link:
                 self.status = 3  # F60 obstructed
             self.loss += self._FSPL(self.distance)
         return self.loss, self.status
-        
+
     def plot(self, figure, pltid, text):
         ax = figure.add_subplot(pltid)
         ax.plot(self.d, self.y, label="Terrain profile")
@@ -149,7 +150,7 @@ class Link:
             status_t = "Fresnel Obstructed"
         elif self.status < 0:
             status_t = "Error"
-        text = "LOSS: %fdB\n"%((self.loss))+status_t
+        text = "LOSS: %fdB\n" % ((self.loss)) + status_t
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.10, 0.15, text, transform=ax.transAxes, fontsize=10, verticalalignment='top', bbox=props)
-        #plt.axes().set_aspect('equal')
+        # plt.axes().set_aspect('equal')
