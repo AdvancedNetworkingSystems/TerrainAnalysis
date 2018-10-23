@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from cn_generator import CN_Generator
 from misc import Susceptible_Buffer
 import argparse
+import ubiquiti as ubnt
 
 
 class Growing_network(CN_Generator):
@@ -11,9 +12,16 @@ class Growing_network(CN_Generator):
     def __init__(self, dataset, args=None, DSN=None):
         self.sb = Susceptible_Buffer()
         CN_Generator.__init__(self, dataset, DSN=None)
-        self.parser.add_argument('-n', help="number of nodes", type=int, required=True)
+        self.parser.add_argument('-n', help="number of nodes", type=int,
+                                 required=True)
+        self.parser.add_argument('-e', help="expansion range (in meters), if 0"
+                                 "pick buildings at any range", type=float,
+                                 default=20000)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
+        self.e = self.args.e
+        self.get_susceptibles()
+        ubnt.load_devices()
 
     def get_gateway(self):
         return self.t.get_building_gid(gid=54922)
@@ -26,7 +34,10 @@ class Growing_network(CN_Generator):
     def get_susceptibles(self):
         geoms = [g.shape() for g in self.infected]
         self.sb.set_shape(geoms)
-        self.susceptible = set(self.t.get_building(self.sb.get_buffer(1000))) - set(self.infected)
+
+        self.susceptible = set(self.t.get_building(
+                               self.sb.get_buffer(self.e))) -\
+                               set(self.infected)
 
     def stop_condition(self):
         if len(self.infected) >= self.n:
@@ -60,6 +71,7 @@ class Growing_network(CN_Generator):
             self.graph.add_node(link[0].gid, pos=link[0].xy())
             self.graph.add_node(link[1].gid, pos=link[1].xy())
             self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+            print(ubnt.get_fastest_link_hardware(link[2]), link[2])
             if len(visible_links) > 1:
                 link = visible_links.pop()
                 self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])

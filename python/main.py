@@ -5,6 +5,7 @@ from cn_generator import CN_Generator
 from strategies.growing_network import Growing_network
 import argparse
 import pkgutil
+import ubiquiti as ubnt
 
 
 STRATEGIES = {
@@ -37,6 +38,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    ubnt.load_devices()
     args, unknown_args = parse_args()
     s = STRATEGIES.get(args.s)(args.d, args=unknown_args)
     s.main()

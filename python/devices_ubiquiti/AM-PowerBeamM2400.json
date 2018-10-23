@@ -2,7 +2,7 @@
   "name": "AirMax",
   "code": "PowerBeamM2400",
   "technology": "802.11n",
-  "frequency": "2",
+  "frequency": "2.4",
   "beamwidth":null,
   "gain_tx": 18,
   "gain_rx": 18,

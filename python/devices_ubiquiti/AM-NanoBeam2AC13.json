@@ -2,7 +2,7 @@
   "name": "AirMax",
   "code": "NanoBeam2Ac13",
   "technology": "AirMax ac",
-  "frequency": "2",
+  "frequency": "2.4",
   "beamwidth":null,
   "gain_tx": 13,
   "gain_rx": 13,

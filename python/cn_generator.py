@@ -27,7 +27,6 @@ class CN_Generator():
         self.infected.append(gateway)
         self.graph.add_node(gateway.gid, pos=gateway.xy())
         print("The gateway is " + repr(gateway))
-        self.get_susceptibles()
 
     def get_gateway(self):
         raise NotImplementedError
