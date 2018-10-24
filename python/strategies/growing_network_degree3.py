@@ -69,7 +69,6 @@ class Growing_network_degree3(CN_Generator):
             link = visible_links.pop()
             self.infected.append(link[0])
             self.graph.add_node(link[0].gid, pos=link[0].xy())
-            #self.graph.add_node(link[1].gid, pos=link[1].xy())
             self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
             if (self.graph.degree(link[1].gid) > 2):
                 self.recovered.add(link[1])

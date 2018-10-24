@@ -61,6 +61,6 @@ class CN_Generator():
             if(self.add_links(new_node)):
                 # update area of susceptible nodes
                 self.get_susceptibles()
-            print("Number of nodes:%d" % (len(self.infected)))
+                print("Number of nodes:%d" % (len(self.graph.nodes)))
         # save result
         self.save_graph()
