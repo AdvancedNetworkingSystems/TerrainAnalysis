@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from cn_generator import CN_Generator
 from misc import Susceptible_Buffer
 import argparse
+import time
 
 
 class Growing_network(CN_Generator):
@@ -16,12 +17,13 @@ class Growing_network(CN_Generator):
         self.parser.add_argument('-e', help="expansion range (in meters), if 0"
                                  "pick buildings at any range", type=float,
                                  default=20000)
-        self.parser.add_argument('-b', help="start building id",
+        self.parser.add_argument('-b', help="start building id", type=int,
                                  required=True)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        self.filename = "graph-%s-%s-%d-%d-%d.graphml" % (dataset, self.args.n, int(self.args.e), self.args.b, time.time())
         self._post_init()
 
     def get_gateway(self):

@@ -51,7 +51,7 @@ class CN_Generator():
             self.graph.node[node]['x'] = self.graph.node[node]['pos'][0]
             self.graph.node[node]['y'] = self.graph.node[node]['pos'][1]
             del self.graph.node[node]['pos']
-        nx.write_graphml(self.graph, "graph-%d.graphml" % (time.time()))
+        nx.write_graphml(self.graph, self.filename)
 
     def main(self):
         while not self.stop_condition():
