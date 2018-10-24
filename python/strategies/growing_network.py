@@ -23,7 +23,7 @@ class Growing_network(CN_Generator):
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
-        self.filename = "graph-%s-%s-%d-%d-%d.graphml" % (dataset, self.args.n, int(self.args.e), self.args.b, time.time())
+        self.filename = "graph-%s-%s-%d-%d-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
 
     def get_gateway(self):
