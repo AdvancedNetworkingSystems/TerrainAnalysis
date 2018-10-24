@@ -18,7 +18,7 @@
 		},
 		{
 			"type": "writers.pgpointcloud",
-			"connection":"dbname='terrain_analysis' user='terrain_analysis'",
+			"connection":"host='192.168.160.130' dbname='terrain_ans' user='dboperator' password='secret'",
 			"table" : "lidar_toscana",
 			"column": "pa",
 			"srid": "4326",
