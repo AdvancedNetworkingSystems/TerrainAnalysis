@@ -1,5 +1,7 @@
 import json
 import os
+import csv
+from collections import defaultdict
 #from collections import defaultdict
 #import random
 #import numpy as np
@@ -66,11 +68,20 @@ bitrate_n = {'MCS0': 15, 'MCS1': 30, 'MCS2': 45,
              'MCS15': 300}
 
 json_folder = '80211/devices_ubiquiti'
+mcs_AC_file = '80211/mcs-AC.csv'
+mcs_N_file = '80211/mcs-N.csv'
 
+def rec_dd():
+    return defaultdict(rec_dd)
+
+mcs_N = rec_dd()
+mcs_AC = rec_dd()
 
 tx_power_regulation_eu = {
         '2.4': 20,
         '5': 30}
+
+default_channel_width = 40
 
 
 def read_device(x):
@@ -84,7 +95,22 @@ def read_device(x):
         return dict()
 
 
-def load_devices(airmax=True, airfiber=False):
+def load_devices(airmax=True, airfiber=False, ):
+    with open(mcs_N_file) as f:
+        for row in csv.DictReader(f):
+            try:
+                b = float(row['400 ns GI'])
+            except ValueError:
+                b = 0
+            mcs_N['MCS'+row['MCS']][int(row['channel'])] = b
+    with open(mcs_AC_file) as f:
+        for row in csv.DictReader(f):
+            try:
+                b = float(row['400 ns GI'])
+            except ValueError:
+                b = 0
+            mcs_AC['MCS'+row['MCS']][int(row['streams'])]\
+                                    [int(row['channel'])] = b
     if airmax:
         for i in devices_airmax:
             devices[i] = read_device(i)
@@ -260,12 +286,13 @@ def get_fastest_link_hardware(pathloss):
     if tmp:
         for d in tmp:
             if get_attribute(d[0], 'technology') == 'AirMax ac':
-                if max_mod < bitrate_ac[d[1]]:
-                    max_mod = bitrate_ac[d[1]]
+                streams = int(get_attribute(d[0], 'max_streams'))
+                if max_mod < bitrate_ac[d[1]][streams]:
+                    max_mod = bitrate_ac[d[1]][streams]
                     device = d
             elif get_attribute(d[0], 'technology') == '802.11n':
-                if max_mod < bitrate_n[d[1]]:
-                    max_mod = bitrate_n[d[1]]
+                if max_mod < bitrate_n[d[1]][default_channel_width]:
+                    max_mod = bitrate_n[d[1]][default_channel_width]
                     device = d
         return max_mod, device
     else:
