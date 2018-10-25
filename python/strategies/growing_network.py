@@ -14,9 +14,9 @@ class Growing_network(CN_Generator):
         CN_Generator.__init__(self, dataset, DSN=None)
         self.parser.add_argument('-n', help="number of nodes", type=int,
                                  required=True)
-        self.parser.add_argument('-e', help="expansion range (in meters), if 0"
-                                 "pick buildings at any range", type=float,
-                                 default=20000)
+        self.parser.add_argument('-e', help="expansion range (in meters), defaults"
+                                 "to buildings at 30mk", type=float,
+                                 default=30000)
         self.parser.add_argument('-b', help="start building id", type=int,
                                  required=True)
         self.args = self.parser.parse_args(args)
