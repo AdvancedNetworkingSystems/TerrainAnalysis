@@ -4,6 +4,7 @@
   "technology": "AirMax ac",
   "frequency": "5",
   "beamwidth":null,
+  "max_streams": 2,
   "gain_tx": 22,
   "gain_rx": 22,
   "max_consumption": 5.5,

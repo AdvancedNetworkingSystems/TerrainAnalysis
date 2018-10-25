@@ -4,6 +4,7 @@
   "technology": "802.11n",
   "frequency": "2.4",
   "beamwidth":null,
+  "max_streams": 2,
   "gain_tx": 18,
   "gain_rx": 18,
   "max_consumption": 6,
