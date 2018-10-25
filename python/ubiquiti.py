@@ -65,7 +65,7 @@ bitrate_n = {'MCS0': 15, 'MCS1': 30, 'MCS2': 45,
              'MCS12': 180, 'MCS13': 240, 'MCS14': 270,
              'MCS15': 300}
 
-json_folder = 'devices_ubiquiti'
+json_folder = '80211/devices_ubiquiti'
 
 
 tx_power_regulation_eu = {
