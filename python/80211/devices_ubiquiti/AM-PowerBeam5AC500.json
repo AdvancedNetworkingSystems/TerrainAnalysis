@@ -8,6 +8,7 @@
   "gain_rx": 27,
   "max_consumption": 8.5,
   "gbps": "10/100/1000",
+  "max_streams": "2",
   "rx_power":{
     "MCS0":-96,
     "MCS1":-95,

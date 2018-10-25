@@ -73,7 +73,6 @@ class Growing_network(CN_Generator):
             self.graph.add_node(link[0].gid, pos=link[0].xy())
             self.graph.add_node(link[1].gid, pos=link[1].xy())
             self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-            print(ubnt.get_fastest_link_hardware(link[2]), link[2])
             if len(visible_links) > 1:
                 link = visible_links.pop()
                 self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])

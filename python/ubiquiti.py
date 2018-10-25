@@ -1,7 +1,6 @@
 import json
 import os
 import csv
-from collections import defaultdict
 import wifi
 #from collections import defaultdict
 #import random
@@ -48,20 +47,6 @@ devices = {}
 json_folder = '80211/devices_ubiquiti'
 
 
-def rec_dd():
-    return defaultdict(rec_dd)
-
-
-mcs_N = rec_dd()
-mcs_AC = rec_dd()
-
-tx_power_regulation_eu = {
-        '2.4': 20,
-        '5': 30}
-
-default_channel_width = 40
-
-
 def read_device(x):
     try:
         dev_path = x + '.json'
@@ -73,7 +58,8 @@ def read_device(x):
         return dict()
 
 
-def load_devices(airmax=True, airfiber=False, ):
+def load_devices(airmax=True, airfiber=False):
+    wifi.load_mcs_tables()
     if airmax:
         for i in devices_airmax:
             devices[i] = read_device(i)
@@ -193,7 +179,8 @@ def get_feasible_modulation_list(x, y, pathloss, cap_tx_power=True):
             tx_pow = i[1] + get_attribute(x, 'gain_tx')
             if cap_tx_power:
                 tx_pow = min(tx_pow,
-                             tx_power_regulation_eu[get_attribute(x, 'frequency')])
+                             wifi.tx_power_regulation_eu[
+                                 get_attribute(x, 'frequency')])
             pr = tx_pow + get_attribute(y, 'gain_rx') - pathloss
             if pr > get_rx_power_mod(y, i[0]):
                 res.append(i[0])
@@ -203,7 +190,8 @@ def get_feasible_modulation_list(x, y, pathloss, cap_tx_power=True):
             tx_pow = get_tx_power_mod(x, i) + get_attribute(y, 'gain_tx')
             if cap_tx_power:
                 tx_pow = min(tx_pow,
-                             tx_power_regulation_eu[get_attribute(x, 'frequency')])
+                             wifi.tx_power_regulation_eu[
+                                 get_attribute(x, 'frequency')])
             pr = tx_pow + get_attribute(y, 'gain_rx') - pathloss
             if pr > get_rx_power_mod(y, i):
                 res.append(i)
@@ -212,7 +200,8 @@ def get_feasible_modulation_list(x, y, pathloss, cap_tx_power=True):
             tx_pow = i + get_attribute(x, 'gain_tx')
             if cap_tx_power:
                 tx_pow = min(tx_pow,
-                             tx_power_regulation_eu[get_attribute(x, 'frequency')])
+                             wifi.tx_power_regulation_eu[
+                                 get_attribute(x, 'frequency')])
             pr = tx_powe + get_attribute(x, 'gain_rx') - pathloss
             for j in get_rx_power_af_mod(x, i[0]):
                 if pr > j[1]:
@@ -250,12 +239,14 @@ def get_fastest_link_hardware(pathloss):
         for d in tmp:
             if get_attribute(d[0], 'technology') == 'AirMax ac':
                 streams = int(get_attribute(d[0], 'max_streams'))
-                if max_mod < bitrate_ac[d[1]][streams]:
-                    max_mod = bitrate_ac[d[1]][streams]
+                if max_mod < wifi.mcs_AC[d[1]][streams]\
+                                        [wifi.default_channel_width]:
+                    max_mod = wifi.mcs_AC[d[1]][streams]\
+                                        [wifi.default_channel_width]
                     device = d
             elif get_attribute(d[0], 'technology') == '802.11n':
-                if max_mod < bitrate_n[d[1]][default_channel_width]:
-                    max_mod = bitrate_n[d[1]][default_channel_width]
+                if max_mod < wifi.mcs_N[d[1]][wifi.default_channel_width]:
+                    max_mod = wifi.mcs_N[d[1]][wifi.default_channel_width]
                     device = d
         return max_mod, device
     else:
