@@ -2,6 +2,7 @@ import json
 import os
 import csv
 from collections import defaultdict
+import wifi
 #from collections import defaultdict
 #import random
 #import numpy as np
@@ -31,17 +32,6 @@ devices_airmax = ["AM-IsoStation5AC",
                   "AM-PowerBeamM5300", "AM-PowerBeamM5400",
                   "AM-PowerBeamM5620"]
 
-af_modulations = ['1/4 QPSK SISO', 'QPSK SISO',
-                  '16 QAM SISO', '64 QAM SISO',
-                  '256 QAM SISO', '1024 QAM SISO',
-                  '1/4 QPSK xRT', '1/2 QPSK xRT',
-                  'QPSK MIMO', '16 QAM MIMO', '64 QAM MIMO',
-                  '256 QAM MIMO', '1024 QAM MIMO']
-
-am_modulations = ["MCS0", "MCS1", "MCS2", "MCS3", "MCS4",
-                  "MCS5", "MCS6", "MCS7", "MCS8", "MCS9",
-                  "MCS10", "MCS11", "MCS12", "MCS13", "MCS14",
-                  "MCS15"]
 
 angles = [90, 75, 60, 45, 30, 15, 0, -15, -30, -45, -60, -75, -90]
 
@@ -55,24 +45,12 @@ band = ['sensitivity(3.5)', 'sensitivity(5)',
 
 devices = {}
 
-bitrate_ac = {'MCS0': 32.5, 'MCS1': 130, 'MCS2': 195,
-              'MCS3': 520, 'MCS4': 780,
-              'MCS5': 1560, 'MCS6': 1755,
-              'MCS7': 1950, 'MCS8': 3120, 'MCS9': 3466}
-
-bitrate_n = {'MCS0': 15, 'MCS1': 30, 'MCS2': 45,
-             'MCS3': 60, 'MCS4': 90, 'MCS5': 120,
-             'MCS6': 135, 'MCS7': 150, 'MCS8': 30,
-             'MCS9': 60, 'MCS10': 90, 'MCS11': 120,
-             'MCS12': 180, 'MCS13': 240, 'MCS14': 270,
-             'MCS15': 300}
-
 json_folder = '80211/devices_ubiquiti'
-mcs_AC_file = '80211/mcs-AC.csv'
-mcs_N_file = '80211/mcs-N.csv'
+
 
 def rec_dd():
     return defaultdict(rec_dd)
+
 
 mcs_N = rec_dd()
 mcs_AC = rec_dd()
@@ -96,21 +74,6 @@ def read_device(x):
 
 
 def load_devices(airmax=True, airfiber=False, ):
-    with open(mcs_N_file) as f:
-        for row in csv.DictReader(f):
-            try:
-                b = float(row['400 ns GI'])
-            except ValueError:
-                b = 0
-            mcs_N['MCS'+row['MCS']][int(row['channel'])] = b
-    with open(mcs_AC_file) as f:
-        for row in csv.DictReader(f):
-            try:
-                b = float(row['400 ns GI'])
-            except ValueError:
-                b = 0
-            mcs_AC['MCS'+row['MCS']][int(row['streams'])]\
-                                    [int(row['channel'])] = b
     if airmax:
         for i in devices_airmax:
             devices[i] = read_device(i)
@@ -236,7 +199,7 @@ def get_feasible_modulation_list(x, y, pathloss, cap_tx_power=True):
                 res.append(i[0])
     elif get_attribute(x, 'technology') == '802.11n' and \
             get_attribute(x, 'name') == 'AirMax':
-        for i in am_modulations:
+        for i in wifi.mcs_N.keys():
             tx_pow = get_tx_power_mod(x, i) + get_attribute(y, 'gain_tx')
             if cap_tx_power:
                 tx_pow = min(tx_pow,
