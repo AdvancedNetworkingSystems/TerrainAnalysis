@@ -28,6 +28,7 @@ class CN_Generator():
         gateway = self.get_gateway()
         self.infected.append(gateway)
         self.graph.add_node(gateway.gid, pos=gateway.xy())
+        self.get_susceptibles()
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
