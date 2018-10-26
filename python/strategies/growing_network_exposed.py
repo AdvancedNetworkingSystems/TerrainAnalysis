@@ -77,11 +77,11 @@ class Growing_network_exposed(CN_Generator):
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x[2], reverse=True)
             link = visible_links_exposed.pop()
-            self.graph.add_node(link[1].gid, pos=link[1].xy())
             self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
             if link[0] not in self.infected:
                 self.infected.append(link[0])  # If i wasn't conncted to anybody but i connected to an Exposed
-            self.infected.append(link[1])      # we are both infected (separate island though)
+                self.infected.append(link[1])      # we are both infected (separate island though)
+                self.exposed.remove(link[1])
             node_added = True
         if not node_added:  # Node not connectable to anybody
             self.exposed.add(new_node)
