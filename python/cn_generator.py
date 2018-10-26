@@ -19,6 +19,9 @@ class CN_Generator():
         self.susceptible = set()
         self.graph = nx.Graph()
         self.parser = argparse.ArgumentParser()
+        self.parser.add_argument("-p", help="plot the graph using the browser",
+                            dest='plot', action='store_true')
+        self.parser.set_defaults(plot=False)
         if not DSN:
             self.t = terrain(self.DSN, dataset, ple=2.4)
         else:
@@ -72,6 +75,7 @@ class CN_Generator():
                 # update area of susceptible nodes
                 self.get_susceptibles()
                 print("Number of nodes:%d" % (len(self.graph.nodes)))
-                self.plot()
+                if self.args.plot:
+                    self.plot()
         # save result
         self.save_graph()
