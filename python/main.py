@@ -4,13 +4,17 @@ import matplotlib.pyplot as plt
 from cn_generator import CN_Generator
 from strategies.growing_network import Growing_network
 from strategies.growing_network_degree3 import Growing_network_degree3
+from strategies.growing_network_exposed import Growing_network_exposed
+
 import argparse
 import pkgutil
 
 
 STRATEGIES = {
     'growing_network': Growing_network,
-    'growing_network_degree3': Growing_network_degree3
+    'growing_network_degree3': Growing_network_degree3,
+    'growing_network_exposed': Growing_network_exposed
+
 }
 
 
