@@ -17,18 +17,13 @@ class Growing_network(CN_Generator):
         self.parser.add_argument('-e', help="expansion range (in meters), defaults"
                                  "to buildings at 30km", type=float,
                                  default=30000)
-        self.parser.add_argument('-b', help="start building id", type=int,
-                                 required=True)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
-        self.filename = "graph-%s-%s-%d-%d-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
+        self.filename = "graph-%s-%s-%d-%s-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
         ubnt.load_devices()
-
-    def get_gateway(self):
-        return self.t.get_building_gid(gid=self.b)
 
     def get_newnode(self):
         new_node = random.sample(self.susceptible, 1)[0]
@@ -66,6 +61,7 @@ class Growing_network(CN_Generator):
     def add_links(self, new_node):
         visible_links = self.check_connectivity(new_node)
         # if there's at least one vaild link add the node to the network
+        print("testing new node")
         if visible_links:
             visible_links.sort(key=lambda x: x[2], reverse=True)
             link = visible_links.pop()
@@ -75,5 +71,6 @@ class Growing_network(CN_Generator):
             if len(visible_links) > 1:
                 link = visible_links.pop()
                 self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+                print("added link")
             return True
         return False

@@ -1,7 +1,9 @@
 from libterrain.libterrain import terrain
 from geoalchemy2.shape import to_shape
 from shapely.geometry.polygon import Polygon
+from shapely.geometry import Point
 from multiprocessing import Pool
+from misc import NoGWError
 import shapely
 import random
 import time
@@ -9,6 +11,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import argparse
 import mplleaflet
+
 
 class CN_Generator():
 
@@ -20,14 +23,19 @@ class CN_Generator():
         self.graph = nx.Graph()
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-p", help="plot the graph using the browser",
-                            dest='plot', action='store_true')
+                                 dest='plot', action='store_true')
+        self.parser.add_argument('-b', help="start building latlong (lat.dd,long.dd)", type=str,
+                                 required=True)
         self.parser.set_defaults(plot=False)
+        
         if not DSN:
             self.t = terrain(self.DSN, dataset, ple=2.4)
         else:
             self.t = terrain(DSN, dataset, ple=2.4)
 
     def _post_init(self):
+        latlong = self.b.split(",")
+        self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
         gateway = self.get_gateway()
         self.infected.append(gateway)
         self.graph.add_node(gateway.gid, pos=gateway.xy())
@@ -35,7 +43,10 @@ class CN_Generator():
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
-        raise NotImplementedError
+        buildings = self.t.get_building(shape=self.gw_pos)
+        if len(buildings) < 1:
+            raise NoGWError
+        return buildings[0]
 
     def get_newnode(self):
         raise NotImplementedError
