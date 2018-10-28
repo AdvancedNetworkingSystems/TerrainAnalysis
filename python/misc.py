@@ -20,3 +20,7 @@ class Susceptible_Buffer():
 
     def get_buffer(self, m):
         return transform(self.deproject, self.shape.buffer(m))
+
+
+class NoGWError(Exception):
+    pass

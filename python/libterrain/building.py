@@ -33,6 +33,10 @@ class Building(Base):
             .filter_by(gid=gid).first()
         return building
 
+    @staticmethod
+    def get_building(libterrain, shape):
+        raise NotImplementedError
+
 
 class Building_CTR(Building):
     __tablename__ = 'ctr_firenze'
@@ -47,7 +51,25 @@ class Building_CTR(Building):
         return "Building ID: {0} \nLongitude: {1} \nLatitude: {2} \nCodice: {3}".format(self.gid, self.coords().x, self.coords().y, self.codice)
 
     @staticmethod
-    def get_building(libterrain, shape):
+    def get_building(libterrain, shape, area=None):
+        """Get the buildings intersecting a shape
+        point: shapely object
+        """
+        wkb_element = from_shape(shape, srid=libterrain.srid)
+        if area:
+            wkb_area = from_shape(area, srid=libterrain.srid)
+            building = libterrain.session.query(Building_CTR) \
+                .filter(Building_CTR.codice.in_(libterrain.codici),
+                        Building_CTR.geom.intersects(wkb_element),
+                        Building_CTR.geom.intersects(wkb_area))
+        else:
+            building = libterrain.session.query(Building_CTR) \
+                .filter(and_(Building_CTR.codice.in_(libterrain.codici),
+                             Building_CTR.geom.intersects(wkb_element)))
+        return building.all()
+    
+    @staticmethod
+    def count_building(libterrain, shape):
         """Get the buildings intersecting a shape
         point: shapely object
         """
@@ -55,7 +77,7 @@ class Building_CTR(Building):
         building = libterrain.session.query(Building_CTR) \
             .filter(and_(Building_CTR.codice.in_(libterrain.codici),
                          Building_CTR.geom.intersects(wkb_element)))
-        return building.all()
+        return building.count()
 
 
 class Building_OSM(Building):
@@ -74,12 +96,28 @@ class Building_OSM(Building):
             .format(self.gid, self.coords().x, self.coords().y, self.codice)
 
     @staticmethod
-    def get_building(libterrain, shape):
+    def get_building(libterrain, shape, area=None):
+        """Get the buildings intersecting a shape
+        point: shapely object
+        """
+        wkb_element = from_shape(shape, srid=libterrain.srid)
+        if area:
+            wkb_area = from_shape(area, srid=libterrain.srid)
+            building = libterrain.session.query(Building_CTR) \
+                .filter(Building_CTR.geom.intersects(wkb_element),
+                        Building_CTR.geom.intersects(wkb_area))
+        else:
+            building = libterrain.session.query(Building_OSM) \
+                .filter(Building_OSM.geom.intersects(wkb_element))
+        return building.all()
+
+    @staticmethod
+    def count_building(libterrain, shape):
         """Get the buildings intersecting a shape
         point: shapely object
         """
         wkb_element = from_shape(shape, srid=libterrain.srid)
         building = libterrain.session.query(Building_OSM) \
             .filter(Building_OSM.geom.intersects(wkb_element))
-        result = building.all()
+        result = building.count()
         return result

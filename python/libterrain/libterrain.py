@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from libterrain.link import Link, ProfileException
 from libterrain.building import Building_CTR, Building_OSM
+from libterrain.comune import Comune
 
 
 class ST_MakeEnvelope(GenericFunction):
@@ -101,16 +102,29 @@ class terrain():
     def _set_dataset(self):
         self.lidar_table = 'lidar_toscana'
         self.buff = 0.5  # 1 point per metre
-        if self.dataset == "firenze":
-            self.working_area = [11.1610, 43.8487, 11.3026, 43.7503]
-            self.building_class = Building_OSM
-        elif self.dataset == "pontremoli":
-            self.working_area = [9.7848, 44.4507, 9.9864, 44.3324]
+        comune = Comune.get_by_name(self.session, self.dataset.upper())
+        self.polygon_area = comune.shape()
+        self._set_building_filter(['0201'])
+        n_build_ctr = Building_CTR.count_building(self, self.polygon_area)
+        n_build_osm = Building_OSM.count_building(self, self.polygon_area)
+        print(n_build_ctr)
+        print(n_build_osm)
+        if n_build_ctr > n_build_osm:
             self.building_class = Building_CTR
-            self._set_building_filter(['0201'])
-        elif self.dataset == "quarrata":
-            self.working_area = [10.9165, 43.8987, 11.0816, 43.7995]
+            print("Buildings from CTR")
+        else:
             self.building_class = Building_OSM
+            print("Buildings from OSM")
+        #if self.dataset == "firenze":
+        #     self.working_area = [11.1610, 43.8487, 11.3026, 43.7503]
+        #     self.building_class = Building_OSM
+        # elif self.dataset == "pontremoli":
+        #     self.working_area = [9.7848, 44.4507, 9.9864, 44.3324]
+        #     self.building_class = Building_CTR
+        #     self._set_building_filter(['0201'])
+        # elif self.dataset == "quarrata":
+        #     self.working_area = [10.9165, 43.8987, 11.0816, 43.7995]
+        #     self.building_class = Building_OSM
 
     def get_loss(self, b1, b2, h1=2, h2=2):
         """Calculate the path loss between two buildings_pair
@@ -135,4 +149,4 @@ class terrain():
         return self.building_class.get_building_gid(self.session, gid)
 
     def get_building(self, shape):
-        return self.building_class.get_building(self, shape)
+        return self.building_class.get_building(self, shape, area=self.polygon_area)

@@ -18,17 +18,12 @@ class Growing_network_degree3(CN_Generator):
         self.parser.add_argument('-e', help="expansion range (in meters), if 0"
                                  "pick buildings at any range", type=float,
                                  default=20000)
-        self.parser.add_argument('-b', help="start building id", type=int,
-                                 required=True)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
-        self.filename = "graph-%s-%s-%d-%d-%d.graphml" % (dataset, self.args.n, int(self.e), self.b, time.time())
+        self.filename = "graph-%s-%s-%d-%s-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
-
-    def get_gateway(self):
-        return self.t.get_building_gid(gid=self.b)
 
     def get_newnode(self):
         new_node = random.sample(self.susceptible, 1)[0]
