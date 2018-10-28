@@ -8,7 +8,7 @@ import time
 import networkx as nx
 import matplotlib.pyplot as plt
 import argparse
-import mplleaflet
+import folium
 
 class CN_Generator():
 
@@ -56,14 +56,36 @@ class CN_Generator():
             del self.graph.node[node]['pos']
         nx.write_graphml(self.graph, self.filename)
 
+    def graph_to_leaflet(self):
+        location = [(self.t.working_area[1] + self.t.working_area[3])/2,
+                    (self.t.working_area[0] + self.t.working_area[2])/2]
+        box = [
+                [self.t.working_area[1], self.t.working_area[0]],
+                [self.t.working_area[1], self.t.working_area[2]],
+                [self.t.working_area[3], self.t.working_area[2]],
+                [self.t.working_area[3], self.t.working_area[0]],
+                [self.t.working_area[1], self.t.working_area[0]]
+                ]
+        self.m = folium.Map(location=location, zoom_start=14, tiles='Stamen Terrain')
+        folium.PolyLine(locations=box, weight=1, color='green').add_to(self.m)
+        for lat, lon in nx.get_node_attributes(self.graph, 'pos').values():
+            folium.Marker([lon, lat], popup='').add_to(self.m)
+        for frm, to, p in self.graph.edges(data=True):
+            lat_f, lon_f = nx.get_node_attributes(self.graph, 'pos')[frm]
+            lat_t, lon_t = nx.get_node_attributes(self.graph, 'pos')[to]
+            label = str(int(p['weight'])) + " db"
+            folium.PolyLine(locations=[[lon_f, lat_f], [lon_t, lat_t]],
+                            weight=3, popup=label).add_to(self.m)
+
     def plot(self):
         nx.draw(self.graph, pos=nx.get_node_attributes(self.graph, 'pos'))
         plt.draw()
+        self.graph_to_leaflet()
         if self.display_plot:
-            mplleaflet.show()
-            self.display_plot = False
-        else:
-            mplleaflet.save_html()
+            self.graph_to_leaflet()
+            map_file = '/tmp/index.html'
+            self.m.save(map_file)
+            print("A browsable map was saved in " + map_file)
 
     def main(self):
         self.display_plot = True
@@ -75,7 +97,7 @@ class CN_Generator():
                 # update area of susceptible nodes
                 self.get_susceptibles()
                 print("Number of nodes:%d" % (len(self.graph.nodes)))
-                if self.args.plot:
-                    self.plot()
+        if self.args.plot:
+            self.plot()
         # save result
         self.save_graph()

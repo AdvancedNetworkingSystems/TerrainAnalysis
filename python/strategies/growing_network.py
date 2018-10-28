@@ -66,6 +66,7 @@ class Growing_network(CN_Generator):
     def add_links(self, new_node):
         visible_links = self.check_connectivity(new_node)
         # if there's at least one vaild link add the node to the network
+        print("testing new node")
         if visible_links:
             visible_links.sort(key=lambda x: x[2], reverse=True)
             link = visible_links.pop()
@@ -75,5 +76,6 @@ class Growing_network(CN_Generator):
             if len(visible_links) > 1:
                 link = visible_links.pop()
                 self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+                print("added link")
             return True
         return False
