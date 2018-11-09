@@ -5,6 +5,7 @@ from cn_generator import CN_Generator
 from misc import Susceptible_Buffer
 import argparse
 import time
+import ubiquiti as ubnt
 
 
 class Growing_network_exposed(CN_Generator):
@@ -12,6 +13,7 @@ class Growing_network_exposed(CN_Generator):
     def __init__(self, dataset, args=None, DSN=None):
         self.exposed = set()
         self.sb = Susceptible_Buffer()
+        self.visited_links = []
         CN_Generator.__init__(self, dataset, DSN=None)
         self.parser.add_argument('-n', help="number of nodes", type=int,
                                  required=True)
@@ -68,6 +70,8 @@ class Growing_network_exposed(CN_Generator):
             link = visible_links_infected.pop()
             self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
             self.infected.append(link[0])   # If i can connect to an infected node I'm infected too, separate island connected to main net
+            mod = ubnt.get_fastest_link_hardware(link[2])
+            print("Received signal at node %r from node %r is %f using %s" % (link[0], link[1], mod[0], mod[1f]))
             node_added = True
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x[2], reverse=True)
@@ -80,4 +84,5 @@ class Growing_network_exposed(CN_Generator):
             node_added = True
         if not node_added:  # Node not connectable to anybody
             self.exposed.add(new_node)
+        self.visited_links += visible_links_exposed + visible_links_infected
         return True
