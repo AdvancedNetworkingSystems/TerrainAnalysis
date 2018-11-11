@@ -2,6 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Float, Unicode, and_
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
+import numpy as np
 import shapely
 
 Base = declarative_base()
@@ -34,7 +35,7 @@ class Building(Base):
         return building
 
     @staticmethod
-    def get_building(libterrain, shape):
+    def get_buildings(libterrain, shape):
         raise NotImplementedError
 
 
@@ -51,7 +52,7 @@ class Building_CTR(Building):
         return "Building ID: {0} \nLongitude: {1} \nLatitude: {2} \nCodice: {3}".format(self.gid, self.coords().x, self.coords().y, self.codice)
 
     @staticmethod
-    def get_building(libterrain, shape, area=None):
+    def get_buildings(libterrain, shape, area=None):
         """Get the buildings intersecting a shape
         point: shapely object
         """
@@ -69,7 +70,7 @@ class Building_CTR(Building):
         return building.all()
     
     @staticmethod
-    def count_building(libterrain, shape):
+    def count_buildings(libterrain, shape):
         """Get the buildings intersecting a shape
         point: shapely object
         """
@@ -96,7 +97,7 @@ class Building_OSM(Building):
             .format(self.gid, self.coords().x, self.coords().y, self.codice)
 
     @staticmethod
-    def get_building(libterrain, shape, area=None):
+    def get_buildings(libterrain, shape, area=None):
         """Get the buildings intersecting a shape
         point: shapely object
         """
@@ -112,7 +113,7 @@ class Building_OSM(Building):
         return building.all()
 
     @staticmethod
-    def count_building(libterrain, shape):
+    def count_buildings(libterrain, shape):
         """Get the buildings intersecting a shape
         point: shapely object
         """

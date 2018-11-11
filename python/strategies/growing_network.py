@@ -6,6 +6,7 @@ from misc import Susceptible_Buffer
 import argparse
 import time
 import ubiquiti as ubnt
+from antenna import Antenna
 
 class Growing_network(CN_Generator):
 
@@ -34,7 +35,7 @@ class Growing_network(CN_Generator):
         geoms = [g.shape() for g in self.infected]
         self.sb.set_shape(geoms)
 
-        self.susceptible = set(self.t.get_building(
+        self.susceptible = set(self.t.get_buildings(
                                self.sb.get_buffer(self.e))
                                ) - set(self.infected)
 
@@ -42,10 +43,9 @@ class Growing_network(CN_Generator):
         return len(self.infected) >= self.n
 
     def check_link(self, source, destination):
-        loss = self.t.get_loss(destination, source, h1=2, h2=2)
-        if loss > 0:
-            # print("Loss between %d and %d is %f" % (i.gid, new_node.gid, loss))
-            return (source, destination, loss)
+        link = self.t.get_link(destination, source, h1=2, h2=2)
+        if link.loss > 0:
+            return (source, destination, link.loss, link.Aorient, link.Borient)
 
     def check_connectivity(self, new_node):
         visible_links = []
@@ -61,16 +61,15 @@ class Growing_network(CN_Generator):
     def add_links(self, new_node):
         visible_links = self.check_connectivity(new_node)
         # if there's at least one vaild link add the node to the network
-        print("testing new node")
         if visible_links:
             visible_links.sort(key=lambda x: x[2], reverse=True)
             link = visible_links.pop()
             self.infected.append(link[0])
-            self.graph.add_node(link[0].gid, pos=link[0].xy())
-            self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+            #check if current node has already antennas and try to connect to them
+            self.net.add_node(link[0])
+            self.net.add_link(link)
             if len(visible_links) > 1:
                 link = visible_links.pop()
-                self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-                print("added link")
+                self.net.add_link(link)
             return True
         return False

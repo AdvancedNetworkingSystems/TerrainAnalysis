@@ -11,7 +11,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import argparse
 import mplleaflet
-
+import network
 
 class CN_Generator():
 
@@ -20,7 +20,7 @@ class CN_Generator():
     def __init__(self, dataset, DSN=None):
         self.infected = []
         self.susceptible = set()
-        self.graph = nx.Graph()
+        self.net = network.Network()
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
@@ -38,12 +38,12 @@ class CN_Generator():
         self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
         gateway = self.get_gateway()
         self.infected.append(gateway)
-        self.graph.add_node(gateway.gid, pos=gateway.xy())
+        self.net.add_node(gateway)
         self.get_susceptibles()
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
-        buildings = self.t.get_building(shape=self.gw_pos)
+        buildings = self.t.get_buildings(shape=self.gw_pos)
         if len(buildings) < 1:
             raise NoGWError
         return buildings[0]
@@ -61,11 +61,7 @@ class CN_Generator():
         raise NotImplementedError
 
     def save_graph(self):
-        for node in self.graph:
-            self.graph.node[node]['x'] = self.graph.node[node]['pos'][0]
-            self.graph.node[node]['y'] = self.graph.node[node]['pos'][1]
-            del self.graph.node[node]['pos']
-        nx.write_graphml(self.graph, self.filename)
+        self.net.save_graph(self.filename)
 
     def plot(self):
         nx.draw(self.graph, pos=nx.get_node_attributes(self.graph, 'pos'))
@@ -85,8 +81,9 @@ class CN_Generator():
             if(self.add_links(new_node)):
                 # update area of susceptible nodes
                 self.get_susceptibles()
-                print("Number of nodes:%d" % (len(self.graph.nodes)))
+                print("Number of nodes:%d" % (len(self.net.graph.nodes)))
                 if self.args.plot:
                     self.plot()
+                print(self.net.cost)
         # save result
         self.save_graph()

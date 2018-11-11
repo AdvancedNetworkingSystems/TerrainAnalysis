@@ -227,10 +227,12 @@ def check_link(x, y, pathloss):
         return True
 
 
-def get_fastest_link_hardware(pathloss):
+def get_fastest_link_hardware(pathloss, target=None):
     tmp = []
     for d in devices:
-        possible_mod = get_feasible_modulation_list(d, d, pathloss)
+        if not target:
+            target = d
+        possible_mod = get_feasible_modulation_list(d, target, pathloss)
         if possible_mod:
             tmp.append((d, possible_mod.pop()))
     max_mod = 0

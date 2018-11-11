@@ -3,8 +3,9 @@
   "code": "LiteBeamM523",
   "technology": "802.11n",
   "frequency": "5",
-  "beamwidth":null,
-  "max_streams": 2,
+  "beamwidth_H": 30,
+  "beamwidth_V": 30,
+  "max_streams": 1,
   "gain_tx": 23,
   "gain_rx": 23,
   "max_consumption": 4,
@@ -30,7 +31,7 @@
     "MCS7":19
   },
   "capacity":{},
-  "V_elevation":{
+  "elevation":{
     "-90":-30,
     "-75":-30,
     "-60":-30,
@@ -45,20 +46,20 @@
     "75":-30,
     "90":-30
   },
-  "H_elevation":{
-    "-90":null,
-    "-75":null,
-    "-60":null,
-    "-45":null,
-    "-30":null,
-    "-15":null,
-    "0":null,
-    "15":null,
-    "30":null,
-    "45":null,
-    "60":null,
-    "75":null,
-    "90":null
+  "azimuth":{
+    "-90":-17,
+    "-75":-25,
+    "-60":-30,
+    "-45":-20,
+    "-30":-15,
+    "-15":-13,
+    "0":0,
+    "15":-13,
+    "30":-15,
+    "45":-20,
+    "60":-30,
+    "75":-25,
+    "90":-17
   },
   "weight": 0.750,
   "dimension": "362x267x184",

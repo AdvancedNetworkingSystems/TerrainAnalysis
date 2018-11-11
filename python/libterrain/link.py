@@ -5,6 +5,7 @@ import math
 import matplotlib.pyplot as plt
 import copy
 import numpy as np
+import math as m
 
 
 class ProfileException(Exception):
@@ -12,7 +13,7 @@ class ProfileException(Exception):
 
 
 class Link:
-    def __init__(self, profile, h1=2, h2=2, ple=2):
+    def __init__(self, profile, p1, p2, h1=2, h2=2, ple=2):
         # Constants
         self.ple = ple
         self.R = 6370986  # 6371km
@@ -28,8 +29,19 @@ class Link:
         self.y = copy.deepcopy(list(y))
         self.A = Point(d[0], y[0] + h1)
         self.B = Point(d[-1], y[-1] + h2)
+        self.Borient = (0, 0)
+        self.pA = [p1.x, p1.y, y[0] + h1]
+        self.pB = [p2.x, p2.y, y[-1] + h2]
         self.distance = self.A.distance(self.B)
+        self.Aorient = self._calc_angles(self.pA, self.pB)
+        self.Borient = self._calc_angles(self.pB, self.pA)
         self.loss, self.status = self._loss_calculator()
+        
+    def _calc_angles(self, src, trg):
+        rel_pos = np.subtract(trg, src)
+        yaw = m.atan2(rel_pos[1], rel_pos[0])
+        pitch = m.atan2(rel_pos[2], self.distance)
+        return (m.degrees(yaw), m.degrees(pitch))
 
     def _apply_earth_curvature(self):
         n_points = len(self.d)
