@@ -5,6 +5,7 @@ from cn_generator import CN_Generator
 from misc import Susceptible_Buffer
 import argparse
 import time
+import ubiquiti as ubnt
 
 
 class Growing_network_exposed(CN_Generator):
@@ -24,6 +25,7 @@ class Growing_network_exposed(CN_Generator):
         self.b = self.args.b
         self.filename = "graph-%s-%s-%d-%s-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
+        ubnt.load_devices()
 
     def get_newnode(self):
         new_node = random.sample(self.susceptible, 1)[0]
@@ -61,18 +63,18 @@ class Growing_network_exposed(CN_Generator):
     def add_links(self, new_node):
         visible_links_infected = self.check_connectivity(self.infected, new_node)
         visible_links_exposed = self.check_connectivity(self.exposed, new_node)
-        self.graph.add_node(new_node.gid, pos=new_node.xy())
+        self.net.add_node(new_node)
         node_added = False
         if visible_links_infected:
             visible_links_infected.sort(key=lambda x: x[2], reverse=True)
             link = visible_links_infected.pop()
-            self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+            self.net.add_link(link)
             self.infected.append(link[0])   # If i can connect to an infected node I'm infected too, separate island connected to main net
             node_added = True
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x[2], reverse=True)
             link = visible_links_exposed.pop()
-            self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
+            self.net.add_link(link)
             if link[0] not in self.infected:
                 self.infected.append(link[0])  # If i wasn't conncted to anybody but i connected to an Exposed
                 self.infected.append(link[1])      # we are both infected (separate island though)
