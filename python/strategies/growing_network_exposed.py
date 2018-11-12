@@ -16,14 +16,15 @@ class Growing_network_exposed(CN_Generator):
         CN_Generator.__init__(self, dataset, DSN=None)
         self.parser.add_argument('-n', help="number of nodes", type=int,
                                  required=True)
-        self.parser.add_argument('-e', help="expansion range (in meters), defaults"
-                                 "to buildings at 30mk", type=float,
+        self.parser.add_argument('-e', help="expansion range (in meters), "
+                                 "defaults to buildings at 30km", type=float,
                                  default=30000)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
-        self.filename = "graph-%s-%s-%d-%s-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
+        self.filename = "graph-%s-%s-%d-%s-%d.graphml"\
+                        % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
         ubnt.load_devices()
 
@@ -60,7 +61,8 @@ class Growing_network_exposed(CN_Generator):
         return visible_links
 
     def add_links(self, new_node):
-        visible_links_infected = self.check_connectivity(self.infected, new_node)
+        visible_links_infected = self.check_connectivity(self.infected,
+                                                         new_node)
         visible_links_exposed = self.check_connectivity(self.exposed, new_node)
         self.net.add_node(new_node)
         node_added = False
@@ -68,7 +70,9 @@ class Growing_network_exposed(CN_Generator):
             visible_links_infected.sort(key=lambda x: x[2], reverse=True)
             link = visible_links_infected.pop()
             self.net.add_link(link)
-            self.infected.append(link[0])   # If i can connect to an infected node I'm infected too, separate island connected to main net
+            # If i can connect to an infected node I'm infected too,
+            # separate island connected to main net
+            self.infected.append(link[0])
             node_added = True
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x[2], reverse=True)

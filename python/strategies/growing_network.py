@@ -8,6 +8,7 @@ import time
 import ubiquiti as ubnt
 from antenna import Antenna
 
+
 class Growing_network(CN_Generator):
 
     def __init__(self, dataset, args=None, DSN=None):
@@ -15,14 +16,15 @@ class Growing_network(CN_Generator):
         CN_Generator.__init__(self, dataset, DSN=None)
         self.parser.add_argument('-n', help="number of nodes", type=int,
                                  required=True)
-        self.parser.add_argument('-e', help="expansion range (in meters), defaults"
-                                 "to buildings at 30km", type=float,
+        self.parser.add_argument('-e', help="expansion range (in meters),"
+                                 "defaults to buildings at 30km", type=float,
                                  default=30000)
         self.args = self.parser.parse_args(args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
-        self.filename = "graph-%s-%s-%d-%s-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
+        self.filename = "graph-%s-%s-%d-%s-%d.graphml"\
+                        % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
         ubnt.load_devices()
 

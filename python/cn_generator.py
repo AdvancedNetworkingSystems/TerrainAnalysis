@@ -86,4 +86,10 @@ class CN_Generator():
                     self.plot()
                 #print(self.net.cost)
         # save result
+        #import code
+        #code.interact(local=locals())
         self.save_graph()
+
+    def compute_minimum_bandwidth(self):
+        pass
+        
