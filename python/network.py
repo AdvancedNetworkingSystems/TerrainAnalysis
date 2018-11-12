@@ -11,7 +11,7 @@ class Network():
 
     def add_gateway(self, building):
         self.add_node(building)
-        self.gateway = self.graph.nodes(building.gid)
+        self.gateway = building.gid
 
     def add_node(self, building):
         self.graph.add_node(building.gid, pos=building.xy(), antennas=list(),

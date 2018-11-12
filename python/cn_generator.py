@@ -13,6 +13,11 @@ import argparse
 import mplleaflet
 import network
 
+
+def compute_link_bandwidth(left, right, attrs):
+    return attrs['rate']/attrs['link_per_antenna']
+
+
 class CN_Generator():
 
     DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
@@ -86,11 +91,25 @@ class CN_Generator():
                     self.plot()
                 #print(self.net.cost)
         # save result
-        import code
-        code.interact(local=locals())
-        self.save_graph()
+        min_b = self.compute_minimum_bandwidth()
+        for i in sorted([x for x in min_b.items()], key = lambda x: x[1]):
+            print(i[0], i[1])
+        #import code
+        #code.interact(local=locals())
+        #self.save_graph()
 
     def compute_minimum_bandwidth(self):
-        #paths = 
-        pass
-        
+        min_bandwidth = {}
+        for d in self.net.graph.nodes():
+            if d == self.net.gateway:
+                continue
+            rev_path = nx.dijkstra_path(self.net.graph, d,
+                self.net.gateway, weight=compute_link_bandwidth)
+            min_b = float('inf')
+            for i in range(len(rev_path)-1):
+                attrs = self.net.graph.get_edge_data( rev_path[i], rev_path[i+1])
+                b = attrs['rate']/attrs['link_per_antenna']
+                if b < min_b:
+                    min_b = b
+            min_bandwidth[d] = min_b
+        return min_bandwidth
