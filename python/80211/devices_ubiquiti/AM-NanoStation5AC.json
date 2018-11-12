@@ -3,10 +3,11 @@
   "code": "NanoStation5Ac",
   "technology": "AirMax ac",
   "frequency": "5",
-  "beamwidth":null,
   "max_streams": 2,
   "gain_tx": 16,
   "gain_rx": 16,
+  "beamwidth_H": 90,
+  "beamwidth_V": 30,
   "max_consumption": 8.5,
   "gbps": "10/100/1000",
   "rx_power":{

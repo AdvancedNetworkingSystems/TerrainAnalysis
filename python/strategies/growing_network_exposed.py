@@ -36,7 +36,7 @@ class Growing_network_exposed(CN_Generator):
         geoms = [g.shape() for g in (self.infected + list(self.exposed))]
         self.sb.set_shape(geoms)
 
-        self.susceptible = set(self.t.get_building(
+        self.susceptible = set(self.t.get_buildings(
                                self.sb.get_buffer(self.e))
                                ) - set(self.infected)
 
@@ -44,10 +44,9 @@ class Growing_network_exposed(CN_Generator):
         return len(self.infected) >= self.n
 
     def check_link(self, source, destination):
-        loss = self.t.get_loss(destination, source, h1=2, h2=2)
-        if loss > 0:
-            # print("Loss between %d and %d is %f" % (i.gid, new_node.gid, loss))
-            return (source, destination, loss)
+        link = self.t.get_link(destination, source, h1=2, h2=2)
+        if link and link.loss > 0:
+            return (source, destination, link.loss, link.Aorient, link.Borient)
 
     def check_connectivity(self, set_nodes, new_node):
         visible_links = []

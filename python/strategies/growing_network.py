@@ -44,7 +44,7 @@ class Growing_network(CN_Generator):
 
     def check_link(self, source, destination):
         link = self.t.get_link(destination, source, h1=2, h2=2)
-        if link.loss > 0:
+        if link and link.loss > 0:
             return (source, destination, link.loss, link.Aorient, link.Borient)
 
     def check_connectivity(self, new_node):

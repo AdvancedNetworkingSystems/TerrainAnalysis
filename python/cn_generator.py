@@ -64,7 +64,7 @@ class CN_Generator():
         self.net.save_graph(self.filename)
 
     def plot(self):
-        nx.draw(self.graph, pos=nx.get_node_attributes(self.graph, 'pos'))
+        nx.draw(self.net.graph, pos=nx.get_node_attributes(self.net.graph, 'pos'))
         plt.draw()
         if self.display_plot:
             mplleaflet.show()
@@ -84,6 +84,6 @@ class CN_Generator():
                 print("Number of nodes:%d" % (len(self.net.graph.nodes)))
                 if self.args.plot:
                     self.plot()
-                print(self.net.cost)
+                #print(self.net.cost)
         # save result
         self.save_graph()

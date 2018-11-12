@@ -226,15 +226,34 @@ def check_link(x, y, pathloss):
     else:
         return True
 
+def get_maximum_rate(pathloss, src, dst):
+    possible_mod_dw = get_feasible_modulation_list(src, dst, pathloss)
+    possible_mod_up = get_feasible_modulation_list(src, dst, pathloss)
+    if not (possible_mod_dw and possible_mod_up):
+        return (0, 0)
+    src_streams = int(get_attribute(src, 'max_streams'))
+    dst_streams = int(get_attribute(dst, 'max_streams'))
+    streams = min(src_streams, dst_streams)
+    dw_rate = wifi.mcs_AC[possible_mod_dw.pop()][streams]\
+                        [wifi.default_channel_width]
+    up_rate = wifi.mcs_AC[possible_mod_up.pop()][streams]\
+                        [wifi.default_channel_width]
+    return (dw_rate, up_rate)
 
 def get_fastest_link_hardware(pathloss, target=None):
     tmp = []
-    for d in devices:
-        if not target:
-            target = d
-        possible_mod = get_feasible_modulation_list(d, target, pathloss)
-        if possible_mod:
-            tmp.append((d, possible_mod.pop()))
+    if target:
+        # Find best source wrt target and Estimate the rate and mod for a given link
+        for d in devices:
+            possible_mod = get_feasible_modulation_list(d, target, pathloss)
+            if possible_mod:
+                tmp.append((d, possible_mod.pop()))
+    else:
+        # Find best device pair (2 identical device) for a link
+        for d in devices:
+            possible_mod = get_feasible_modulation_list(d, d, pathloss)
+            if possible_mod:
+                tmp.append((d, possible_mod.pop()))
     max_mod = 0
     device = ''
     if tmp:

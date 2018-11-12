@@ -159,7 +159,7 @@ class terrain():
             # link.plot(fig, pltid=221, text="prova")
             # plt.show()
         except (ZeroDivisionError, ProfileException) as e:
-            return -1
+            return None
         return link
 
 
