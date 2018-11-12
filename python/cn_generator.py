@@ -38,7 +38,7 @@ class CN_Generator():
         self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
         gateway = self.get_gateway()
         self.infected.append(gateway)
-        self.net.add_node(gateway)
+        self.net.add_gateway(gateway)
         self.get_susceptibles()
         print("The gateway is " + repr(gateway))
 
@@ -86,10 +86,11 @@ class CN_Generator():
                     self.plot()
                 #print(self.net.cost)
         # save result
-        #import code
-        #code.interact(local=locals())
+        import code
+        code.interact(local=locals())
         self.save_graph()
 
     def compute_minimum_bandwidth(self):
+        #paths = 
         pass
         

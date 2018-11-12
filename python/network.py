@@ -9,6 +9,10 @@ class Network():
         self.graph = nx.DiGraph()
         self.cost = 0
 
+    def add_gateway(self, building):
+        self.add_node(building)
+        self.gateway = self.graph.nodes(building.gid)
+
     def add_node(self, building):
         self.graph.add_node(building.gid, pos=building.xy(), antennas=list(),
                             cost=node_fixed_cost)
@@ -17,6 +21,7 @@ class Network():
     def add_link(self, link):
         ant1 = None
         device0 = None
+        link_per_antenna = 2
         # loop trough the antenna of the node
         for antenna in self.graph.nodes[link[1].gid]['antennas']:
             if antenna.check_node_vis(link_angles=link[4]):
@@ -26,6 +31,15 @@ class Network():
                                           target=antenna.ubnt_device[0])
                 rate0, rate1 = ubnt.get_maximum_rate(link[2], device0[0],
                                           antenna.ubnt_device[0])
+                # TODO: check any link connected with ant1, find the sharing factor, add one to its sharing factor, store the sharing factor in the new link  
+                for l in self.graph.out_edges(link[1].gid, data=True):
+                    if l[2]['src_ant'] == antenna:
+                        link_per_antenna = l[2]['link_per_antenna'] + 2
+                        l[2]['link_per_antenna'] += 2
+                for l in self.graph.in_edges(link[1].gid, data=True):
+                    if l[2]['dst_ant'] == antenna:
+                        link_per_antenna = l[2]['link_per_antenna'] + 2
+                        l[2]['link_per_antenna'] += 2
                 break
         if not ant1:
             # TODO: find proper device and create new antenna
@@ -39,9 +53,11 @@ class Network():
         # find proper device add antenna to local node
         ant0 = self.add_antenna(link[0].gid, device0, link[3])
         self.graph.add_edge(link[0].gid, link[1].gid, loss=link[2],
-                            src_ant=ant0, dst_ant=ant1, rate=rate0)
+                            src_ant=ant0, dst_ant=ant1, rate=rate0,
+                            link_per_antenna=link_per_antenna)
         self.graph.add_edge(link[1].gid, link[0].gid, loss=link[2],
-                            src_ant=ant1, dst_ant=ant0, rate=rate1)
+                            src_ant=ant1, dst_ant=ant0, rate=rate1,
+                            link_per_antenna=link_per_antenna)
 
     def add_antenna(self, node, device, orientation):
         ant = Antenna(device, orientation)
