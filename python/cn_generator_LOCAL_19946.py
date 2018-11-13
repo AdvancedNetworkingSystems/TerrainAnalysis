@@ -14,12 +14,18 @@ import mplleaflet
 import network
 
 
+def compute_link_quality(left, right, attrs, min_rate=6):
+    """ We want to express metrics as a cost, so high=bad, 1/bandwidth may
+    introduce non linearities with non additive metrics, thus we rescale it for
+    a basic minimum rate  """
+    return min_rate*attrs['link_per_antenna']/attrs['rate']
+
+
 class CN_Generator():
 
     DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
 
     def __init__(self, dataset, DSN=None):
-        self.round = 0
         self.infected = []
         self.susceptible = set()
         self.net = network.Network()
@@ -62,9 +68,6 @@ class CN_Generator():
     def add_links(self, new_node):
         raise NotImplementedError
 
-    def add_edges(self):
-        pass
-
     def save_graph(self):
         self.net.save_graph(self.filename)
 
@@ -80,7 +83,6 @@ class CN_Generator():
     def main(self):
         self.display_plot = True
         while not self.stop_condition():
-            self.round += 1
             # pick random node
             new_node = self.get_newnode()
             # connect it to the network
@@ -91,7 +93,6 @@ class CN_Generator():
                 if self.args.plot:
                     self.plot()
                 #print(self.net.cost)
-            self.add_edges()
         # save result
         min_b = self.compute_minimum_bandwidth()
         for i in sorted([x for x in min_b.items()], key = lambda x: x[1]):
