@@ -7,6 +7,8 @@ import argparse
 import time
 import ubiquiti as ubnt
 from edgeffect import edgeffect
+import networkx as nx
+
 
 class Growing_network_exposed(CN_Generator):
 
@@ -43,7 +45,7 @@ class Growing_network_exposed(CN_Generator):
                                ) - set(self.infected)
 
     def stop_condition(self):
-        return len(self.infected) >= self.n
+        return self.net.size() >= self.n
 
     def check_link(self, source, destination):
         link = self.t.get_link(destination, source, h1=2, h2=2)
@@ -89,25 +91,25 @@ class Growing_network_exposed(CN_Generator):
         self.feasible_links += visible_links_exposed + visible_links_infected
         return True
 
-
     def add_edges(self):
-        if self.round % 5 != 0:
+        if self.net.size() % 10 != 0:
             # run 1 in 5 rounds
             return
+        # run it only in the biggest connected component
         eel = []
         for l in self.feasible_links:
+            if not (l[0].gid in self.net.biggest_sg() and l[1].gid in self.net.biggest_sg()):
+                continue
             edge = {}
             edge[0] = l[0].gid
             edge[1] = l[1].gid
             edge['weight'] = 1  # For now do not use costs
             # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
-            e = edgeffect(self.net.graph, edge)
+            e = edgeffect(self.net.biggest_sg(), edge)
             eel.append((l, e))
         eel.sort(key=lambda x: x[1])
         # Try to connect the best link (try again till something gets connected)
-        print(len(self.net.graph.edges()))
         while(eel):
             if self.net.add_link(eel.pop()[0]):
                 print("Added one edge")
-                print(len(self.net.graph.edges()))            
                 return

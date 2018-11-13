@@ -92,22 +92,26 @@ class Growing_network(CN_Generator):
             self.feasible_links += visible_links
             return True
         return False
-
-    def add_edges(self):
-        if self.round % 10 != 0:
-            # run 1 in 10 rounds
-            return
-        eel = []
-        for l in self.feasible_links:
-            edge = {}
-            edge[0] = l[0].gid
-            edge[1] = l[1].gid
-            edge['weight'] = 1  # For now do not use costs
-            # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
-            e = edgeffect(self.net.graph, edge)
-            eel.append((l, e))
-        eel.sort(key=lambda x: x[1])
-        # Try to connect the best link (try again till something gets connected)
-        while(eel):
-            if self.net.add_link(eel.pop()[0]):
-                return
+    # 
+    # def add_edges(self):
+    #     if self.net.size() % 10 != 0:
+    #         # run 1 in 5 rounds
+    #         return
+    #     # run it only in the biggest connected component
+    #     eel = []
+    #     for l in self.feasible_links:
+    #         if not (l[0].gid in self.net.biggest_sg() and l[1].gid in self.net.biggest_sg()):
+    #             continue
+    #         edge = {}
+    #         edge[0] = l[0].gid
+    #         edge[1] = l[1].gid
+    #         edge['weight'] = 1  # For now do not use costs
+    #         # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
+    #         e = edgeffect(self.net.biggest_sg(), edge)
+    #         eel.append((l, e))
+    #     eel.sort(key=lambda x: x[1])
+    #     # Try to connect the best link (try again till something gets connected)
+    #     while(eel):
+    #         if self.net.add_link(eel.pop()[0]):
+    #             print("Added one edge")
+    #             return

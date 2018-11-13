@@ -87,11 +87,12 @@ class CN_Generator():
             if(self.add_links(new_node)):
                 # update area of susceptible nodes
                 self.get_susceptibles()
-                print("Number of nodes:%d" % (len(self.net.graph.nodes)))
+                print("Number of nodes:%d, infected:%d, susceptible:%d" % (self.net.size(), len(self.infected), len(self.susceptible)))
                 if self.args.plot:
                     self.plot()
                 #print(self.net.cost)
             self.add_edges()
+            self.net.compute_minimum_bandwidth()
         # save result
         # min_b = self.compute_minimum_bandwidth()
         # for i in sorted([x for x in min_b.items()], key = lambda x: x[1]):

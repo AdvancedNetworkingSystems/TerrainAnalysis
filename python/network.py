@@ -14,6 +14,12 @@ class Network():
         self.graph = nx.DiGraph()
         self.cost = 0
 
+    def size(self):
+        return len(self.graph)
+
+    def biggest_sg(self):
+        return max(nx.connected_component_subgraphs(self.graph.to_undirected()), key=len)
+
     def add_gateway(self, building):
         self.add_node(building)
         self.gateway = building.gid
@@ -100,6 +106,9 @@ class Network():
         min_bandwidth = {}
         for d in self.graph.nodes():
             if d == self.gateway:
+                continue
+            if d not in self.biggest_sg():
+                print("PUPPA")
                 continue
             rev_path = nx.dijkstra_path(self.graph, d,
                                         self.gateway,
