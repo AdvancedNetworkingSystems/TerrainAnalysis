@@ -6,7 +6,7 @@ from misc import Susceptible_Buffer
 import argparse
 import time
 import ubiquiti as ubnt
-
+from edgeffect import edgeffect
 
 class Growing_network_exposed(CN_Generator):
 
@@ -23,6 +23,7 @@ class Growing_network_exposed(CN_Generator):
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        self.feasible_links = []
         self.filename = "graph-%s-%s-%d-%s-%d.graphml"\
                         % (dataset, self.n, int(self.e), self.b, time.time())
         self._post_init()
@@ -69,20 +70,44 @@ class Growing_network_exposed(CN_Generator):
         if visible_links_infected:
             visible_links_infected.sort(key=lambda x: x[2], reverse=True)
             link = visible_links_infected.pop()
-            self.net.add_link(link)
-            # If i can connect to an infected node I'm infected too,
-            # separate island connected to main net
-            self.infected.append(link[0])
-            node_added = True
+            if self.net.add_link(link):
+                # If i can connect to an infected node I'm infected too,
+                # separate island connected to main net
+                self.infected.append(link[0])
+                node_added = True
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x[2], reverse=True)
             link = visible_links_exposed.pop()
-            self.net.add_link(link)
-            if link[0] not in self.infected:
-                self.infected.append(link[0])  # If i wasn't conncted to anybody but i connected to an Exposed
-                self.infected.append(link[1])      # we are both infected (separate island though)
-                self.exposed.remove(link[1])
-            node_added = True
+            if self.net.add_link(link):
+                if link[0] not in self.infected:
+                    self.infected.append(link[0])  # If i wasn't conncted to anybody but i connected to an Exposed
+                    self.infected.append(link[1])      # we are both infected (separate island though)
+                    self.exposed.remove(link[1])
+                node_added = True
         if not node_added:  # Node not connectable to anybody
             self.exposed.add(new_node)
+        self.feasible_links += visible_links_exposed + visible_links_infected
         return True
+
+
+    def add_edges(self):
+        if self.round % 5 != 0:
+            # run 1 in 5 rounds
+            return
+        eel = []
+        for l in self.feasible_links:
+            edge = {}
+            edge[0] = l[0].gid
+            edge[1] = l[1].gid
+            edge['weight'] = 1  # For now do not use costs
+            # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
+            e = edgeffect(self.net.graph, edge)
+            eel.append((l, e))
+        eel.sort(key=lambda x: x[1])
+        # Try to connect the best link (try again till something gets connected)
+        print(len(self.net.graph.edges()))
+        while(eel):
+            if self.net.add_link(eel.pop()[0]):
+                print("Added one edge")
+                print(len(self.net.graph.edges()))            
+                return
