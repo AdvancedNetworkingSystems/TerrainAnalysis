@@ -38,10 +38,10 @@ class Network():
         device0 = None
         link_per_antenna = 2
         # loop trough the antenna of the node
-        for antenna in self.graph.nodes[link[1].gid]['antennas']:
-            if antenna.check_node_vis(link_angles=link[4]):
+        for antenna in self.graph.nodes[link['src'].gid]['antennas']:
+            if antenna.check_node_vis(link_angles=link['dst_orient']):
                 ant1 = antenna
-                rate0, device0 = ubnt.get_fastest_link_hardware(link[2],
+                rate0, device0 = ubnt.get_fastest_link_hardware(link['loss'],
                                         target=antenna.ubnt_device[0])
                 if not rate0:
                     # no radio available for this link loss, target antenna pair
@@ -50,34 +50,34 @@ class Network():
                     #       No we select the first one we find, but we should search for the optimal one (max rate)
                     ant1 = None
                     break
-                rate0, rate1 = ubnt.get_maximum_rate(link[2], device0[0],
+                rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device0[0],
                                         antenna.ubnt_device[0])
                 # TODO: check any link connected with ant1, find the sharing factor, add one to its sharing factor, store the sharing factor in the new link  
-                for l in self.graph.out_edges(link[1].gid, data=True):
+                for l in self.graph.out_edges(link['dst'].gid, data=True):
                     if l[2]['src_ant'] == antenna:
                         link_per_antenna = l[2]['link_per_antenna'] + 2
                         l[2]['link_per_antenna'] += 2
-                for l in self.graph.in_edges(link[1].gid, data=True):
+                for l in self.graph.in_edges(link['dst'].gid, data=True):
                     if l[2]['dst_ant'] == antenna:
                         link_per_antenna = l[2]['link_per_antenna'] + 2
                         l[2]['link_per_antenna'] += 2
                 break
         if not ant1:
-            rate1, device1 = ubnt.get_fastest_link_hardware(link[2])
+            rate1, device1 = ubnt.get_fastest_link_hardware(link['loss'])
             if not rate1:
                 # TODO: What should we do if the link is unfeasible?
                 return False
-            rate0, rate1 = ubnt.get_maximum_rate(link[2], device1[0],
+            rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device1[0],
                                                  device1[0])
             device0 = device1
-            ant1 = self.add_antenna(link[1].gid, device1, link[4])
+            ant1 = self.add_antenna(link['dst'].gid, device1, link['src_orient'])
 
         # find proper device add antenna to local node
-        ant0 = self.add_antenna(link[0].gid, device0, link[3])
-        self.graph.add_edge(link[0].gid, link[1].gid, loss=link[2],
+        ant0 = self.add_antenna(link['src'].gid, device0, link['src_orient'])
+        self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
                             src_ant=ant0, dst_ant=ant1, rate=rate0,
                             link_per_antenna=link_per_antenna)
-        self.graph.add_edge(link[1].gid, link[0].gid, loss=link[2],
+        self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
                             src_ant=ant1, dst_ant=ant0, rate=rate1,
                             link_per_antenna=link_per_antenna)
         return True
@@ -107,12 +107,13 @@ class Network():
         for d in self.graph.nodes():
             if d == self.gateway:
                 continue
-            if d not in self.biggest_sg():
-                print("PUPPA")
+            try:
+                rev_path = nx.dijkstra_path(self.graph, d,
+                                            self.gateway,
+                                            weight=compute_link_bandwidth)
+            except nx.exception.NetworkXNoPath:
                 continue
-            rev_path = nx.dijkstra_path(self.graph, d,
-                                        self.gateway,
-                                        weight=compute_link_bandwidth)
+
             min_b = float('inf')
             for i in range(len(rev_path) - 1):
                 attrs = self.graph.get_edge_data(rev_path[i], rev_path[i + 1])

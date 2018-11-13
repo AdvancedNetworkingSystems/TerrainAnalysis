@@ -55,14 +55,19 @@ class Growing_network(CN_Generator):
         return len(self.infected) >= self.n
 
     def check_link(self, source, destination):
-        link = self.t.get_link(destination, source, h1=2, h2=2)
-        if link and link.loss > 0:
-            #TODO: Use dict instead of n-uple
-            return (source, destination, link.loss, link.Aorient, link.Borient)
+        phy_link = self.t.get_link(destination, source, h1=2, h2=2)
+        if phy_link and phy_link.loss > 0:
+            link = {}
+            link['src'] = source
+            link['dst'] = destination
+            link['loss'] = phy_link.loss
+            link['src_orient'] = phy_link.Aorient
+            link['dst_orient'] = phy_link.Borient
+            return link
 
-    def check_connectivity(self, new_node):
+    def check_connectivity(self, set_nodes, new_node):
         visible_links = []
-        for i in self.infected:
+        for i in set_nodes:
             link = self.check_link(source=new_node, destination=i)
             if link:
                 visible_links.append(link)
@@ -73,17 +78,17 @@ class Growing_network(CN_Generator):
         return visible_links
 
     def add_links(self, new_node):
-        visible_links = self.check_connectivity(new_node)
+        visible_links = self.check_connectivity(self.infected, new_node)
         # if there's at least one vaild link add the node to the network
         if visible_links:
-            visible_links.sort(key=lambda x: x[2], reverse=True)
+            visible_links.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links.pop()
-            self.infected.append(link[0])
+            self.infected.append(link['src'])
             # check if current node has already antennas and try to connect to them
-            self.net.add_node(link[0])
+            self.net.add_node(link['src'])
             if not self.net.add_link(link):
                 # if this link is not feasible the following ones (worser) aren't either
-                self.net.del_node(link[0])
+                self.net.del_node(link['src'])
                 return False
             if len(visible_links) > 1:
                 link = visible_links.pop()
@@ -92,26 +97,28 @@ class Growing_network(CN_Generator):
             self.feasible_links += visible_links
             return True
         return False
-    # 
-    # def add_edges(self):
-    #     if self.net.size() % 10 != 0:
-    #         # run 1 in 5 rounds
-    #         return
-    #     # run it only in the biggest connected component
-    #     eel = []
-    #     for l in self.feasible_links:
-    #         if not (l[0].gid in self.net.biggest_sg() and l[1].gid in self.net.biggest_sg()):
-    #             continue
-    #         edge = {}
-    #         edge[0] = l[0].gid
-    #         edge[1] = l[1].gid
-    #         edge['weight'] = 1  # For now do not use costs
-    #         # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
-    #         e = edgeffect(self.net.biggest_sg(), edge)
-    #         eel.append((l, e))
-    #     eel.sort(key=lambda x: x[1])
-    #     # Try to connect the best link (try again till something gets connected)
-    #     while(eel):
-    #         if self.net.add_link(eel.pop()[0]):
-    #             print("Added one edge")
-    #             return
+
+    def add_edges(self):
+        # run only every 10 nodes added
+        if self.net.size() % 10 != 0:
+            return
+        # for each link that we found is feasible, but we havent added compute the edge effect
+        for l in self.feasible_links:
+            # we do it only for the link between nodes of the biggest connected component
+            if not (l['src'].gid in self.net.biggest_sg() and l['dst'].gid in self.net.biggest_sg()):
+                l['effect'] = 0
+                continue
+            edge = {}
+            edge[0] = l['src'].gid
+            edge[1] = l['dst'].gid
+            edge['weight'] = 1  # For now do not use costs
+            # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
+            l['effect'] = edgeffect(self.net.biggest_sg(), edge)
+        # We could just pick up the maximum, but if the link is not negotiable then we should do it again and again
+        # so we order them and we pop them untill the first one connect
+        self.feasible_links.sort(key=lambda x: x['effect'])
+        # Try to connect the best link (try again till something gets connected)
+        while(self.feasible_links):
+            if self.net.add_link(self.feasible_links.pop()):
+                print("Added one edge")
+                return
