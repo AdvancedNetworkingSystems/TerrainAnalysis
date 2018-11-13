@@ -14,8 +14,11 @@ import mplleaflet
 import network
 
 
-def compute_link_bandwidth(left, right, attrs):
-    return attrs['rate']/attrs['link_per_antenna']
+def compute_link_quality(left, right, attrs, min_rate=6):
+    """ We want to express metrics as a cost, so high=bad, 1/bandwidth may
+    introduce non linearities with non additive metrics, thus we rescale it for
+    a basic minimum rate  """
+    return min_rate*attrs['link_per_antenna']/attrs['rate']
 
 
 class CN_Generator():
@@ -104,7 +107,7 @@ class CN_Generator():
             if d == self.net.gateway:
                 continue
             rev_path = nx.dijkstra_path(self.net.graph, d,
-                self.net.gateway, weight=compute_link_bandwidth)
+                self.net.gateway, weight=compute_link_quality)
             min_b = float('inf')
             for i in range(len(rev_path)-1):
                 attrs = self.net.graph.get_edge_data( rev_path[i], rev_path[i+1])
