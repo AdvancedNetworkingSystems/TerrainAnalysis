@@ -103,9 +103,13 @@ class Network():
         for d in self.graph.nodes():
             if d == self.gateway:
                 continue
-            rev_path = nx.dijkstra_path(self.graph, d,
-                                        self.gateway,
-                                        weight=compute_link_quality)
+            try:
+                rev_path = nx.dijkstra_path(self.graph, d,
+                                            self.gateway,
+                                            weight=compute_link_quality)
+            except NetworkXNoPath:
+                min_bandwidth[d] = 0
+                continue
             min_b = float('inf')
             for i in range(len(rev_path) - 1):
                 attrs = self.graph.get_edge_data(rev_path[i], rev_path[i + 1])
@@ -115,3 +119,40 @@ class Network():
             self.graph.node[d]['min_bw'] = min_b
             min_bandwidth[d] = min_b
         return min_bandwidth
+
+    def compute_equivalent_connectivity(self):
+        """ if C_0 is the component including the gateway, then if graph
+        connectivity > 1, return 1/connectivity, else return the number of
+        cut-points """
+        main_comp = None
+        for c in nx.connected_component_subgraphs(self.graph.to_undirected()):
+            if self.gateway in c.nodes():
+                main_comp = c
+
+        connectivity = nx.node_connectivity(main_comp)
+        if connectivity >= 1:
+            return 1/connectivity
+        else:
+            return len(list(nx.articulation_points(
+                               main_comp.to_undirected())))
+
+    def compute_metrics(self):
+        """ returns a dictionary with a set of metrics that evaluate the
+        network graph under several points of view """
+
+        metrics = {}
+        min_bandwidth = self.compute_minimum_bandwidth()
+        disconnected_nodes = 0
+        for d, b in min_bandwidth.items():
+            print(d, b)
+            if not b:
+                disconnected_nodes += 1
+        metrics["connected_nodes"] = 1 + len(min_bandwidth) - disconnected_nodes
+        metrics["unconnected_ratio"] = disconnected_nodes / \
+                                       (1 + len(min_bandwidth))
+        metrics["price_per_user"] = self.cost/metrics['connected_nodes']
+        metrics["price_per_mbyte"] = 8*metrics['price_per_user'] * \
+                                    sum([1/x for x in min_bandwidth.values()
+                                         if x])/metrics['connected_nodes']
+        metrics["cut_points"] = 1/self.compute_equivalent_connectivity()
+        return metrics

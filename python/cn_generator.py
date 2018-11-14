@@ -94,8 +94,8 @@ class CN_Generator():
             self.add_edges()
         # save result
         min_b = self.net.compute_minimum_bandwidth()
-        for i in sorted([x for x in min_b.items()], key=lambda x: x[1]):
-            print(i[0], i[1])
+        for k, v in self.net.compute_metrics().items():
+            print(k, v)
         #import code
         #code.interact(local=locals())
         #self.save_graph()
