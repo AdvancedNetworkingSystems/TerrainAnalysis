@@ -2,14 +2,6 @@ import json
 import os
 import csv
 import wifi
-#from collections import defaultdict
-#import random
-#import numpy as np
-#import networkx as nx
-#import matplotlib.pyplot as plt
-#from itertools import groupby
-#import copy
-#from collections import OrderedDict
 
 
 devices_airfiber = ["AF-11FX", "AF-24", "AF-24HD", "AF-2X", "AF-3X",
