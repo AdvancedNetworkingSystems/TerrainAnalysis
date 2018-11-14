@@ -5,7 +5,7 @@ import code
 node_fixed_cost = 200
 
 
-def compute_link_bandwidth(left, right, attrs):
+def compute_link_quality(left, right, attrs, min_rate=6):
     """ We want to express metrics as a cost, so high=bad, 1/bandwidth may
     introduce non linearities with non additive metrics, thus we rescale it for
     a basic minimum rate  """
@@ -49,7 +49,6 @@ class Network():
                     break
                 rate0, rate1 = ubnt.get_maximum_rate(link[2], device0[0],
                                         antenna.ubnt_device[0])
-                # TODO: check any link connected with ant1, find the sharing factor, add one to its sharing factor, store the sharing factor in the new link  
                 for l in self.graph.out_edges(link[1].gid, data=True):
                     if l[2]['src_ant'] == antenna:
                         link_per_antenna = l[2]['link_per_antenna'] + 2
@@ -106,7 +105,7 @@ class Network():
                 continue
             rev_path = nx.dijkstra_path(self.graph, d,
                                         self.gateway,
-                                        weight=compute_link_bandwidth)
+                                        weight=compute_link_quality)
             min_b = float('inf')
             for i in range(len(rev_path) - 1):
                 attrs = self.graph.get_edge_data(rev_path[i], rev_path[i + 1])
@@ -114,3 +113,5 @@ class Network():
                 if b < min_b:
                     min_b = b
             self.graph.node[d]['min_bw'] = min_b
+            min_bandwidth[d] = min_b
+        return min_bandwidth
