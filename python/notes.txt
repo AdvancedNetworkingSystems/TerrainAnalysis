@@ -1,1 +1,0 @@
-python3 main.py -s growing_network -d quarrata -n 100 -e 300 -b 925014
