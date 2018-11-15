@@ -23,20 +23,20 @@ class Network():
     def biggest_sg(self):
         return max(nx.connected_component_subgraphs(self.graph.to_undirected()), key=len)
 
-    def add_gateway(self, building):
-        self.add_node(building)
+    def add_gateway(self, building, attrs={}):
+        self.add_node(building, attrs)
         self.gateway = building.gid
 
-    def add_node(self, building):
+    def add_node(self, building, attrs={}):
         self.graph.add_node(building.gid, pos=building.xy(), antennas=list(),
-                            cost=node_fixed_cost)
+                            cost=node_fixed_cost, **attrs)
         self.cost += node_fixed_cost
 
     def del_node(self, building):
         self.graph.remove_node(building.gid)
         self.cost -= node_fixed_cost
 
-    def add_link(self, link):
+    def add_link(self, link, attrs={}):
         ant1 = None
         device0 = None
         link_per_antenna = 2
@@ -79,10 +79,10 @@ class Network():
         ant0 = self.add_antenna(link['src'].gid, device0, link['src_orient'])
         self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
                             src_ant=ant0, dst_ant=ant1, rate=rate0,
-                            link_per_antenna=link_per_antenna)
+                            link_per_antenna=link_per_antenna, **attrs)
         self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
                             src_ant=ant1, dst_ant=ant0, rate=rate1,
-                            link_per_antenna=link_per_antenna)
+                            link_per_antenna=link_per_antenna, **attrs)
         return True
 
     def add_antenna(self, node, device, orientation):
