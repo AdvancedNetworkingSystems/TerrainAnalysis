@@ -47,5 +47,5 @@ def parse_args():
 if __name__ == '__main__':
     ubnt.load_devices()
     args, unknown_args = parse_args()
-    s = STRATEGIES.get(args.s)(args.d, args=unknown_args)
+    s = STRATEGIES.get(args.s)(args=args, unk_args=unknown_args)
     s.main()

@@ -9,7 +9,7 @@ def compute_link_quality(left, right, attrs, min_rate=6):
     """ We want to express metrics as a cost, so high=bad, 1/bandwidth may
     introduce non linearities with non additive metrics, thus we rescale it for
     a basic minimum rate  """
-    return min_rate*attrs['link_per_antenna']/attrs['rate']
+    return min_rate * attrs['link_per_antenna'] / attrs['rate']
 
 
 class Network():
@@ -17,11 +17,19 @@ class Network():
         self.graph = nx.DiGraph()
         self.cost = 0
 
+    def set_maxdev(self, max_dev):
+        self.max_dev = max_dev
+
     def size(self):
         return len(self.graph)
 
-    def biggest_sg(self):
-        return max(nx.connected_component_subgraphs(self.graph.to_undirected()), key=len)
+    def main_sg(self):
+        # Return the connected subgraph belonging to the gateway
+        # Always return something, otherwise something very bad is happening
+        sgs = nx.connected_component_subgraphs(self.graph.to_undirected())
+        for sg in sgs:
+            if self.gateway in sg:
+                return sg
 
     def add_gateway(self, building):
         self.add_node(building)
@@ -65,7 +73,12 @@ class Network():
                         link_per_antenna = l[2]['link_per_antenna'] + 2
                         l[2]['link_per_antenna'] += 2
                 break
+
         if not ant1:
+            # Antenna not founded so we add it
+            if(len(self.graph.nodes[link['src'].gid]['antennas']) >= self.max_dev):
+                # Antenna can't be added because we reached the saturtion, no link.
+                return False
             rate1, device1 = ubnt.get_fastest_link_hardware(link['loss'])
             if not rate1:
                 # TODO: What should we do if the link is unfeasible?
@@ -113,7 +126,7 @@ class Network():
             try:
                 rev_path = nx.dijkstra_path(self.graph, d,
                                             self.gateway,
-                                            weight=compute_link_bandwidth)
+                                            weight=compute_link_quality)
             except nx.exception.NetworkXNoPath:
                 continue
             min_b = float('inf')

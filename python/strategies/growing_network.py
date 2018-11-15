@@ -12,21 +12,22 @@ from edgeffect import edgeffect
 
 class Growing_network(CN_Generator):
 
-    def __init__(self, dataset, args=None, DSN=None):
+    def __init__(self, args, unk_args=None, DSN=None):
         self.sb = Susceptible_Buffer()
-        CN_Generator.__init__(self, dataset, DSN=None)
+        CN_Generator.__init__(self, args.d, DSN=None)
         self.parser.add_argument('-n', help="number of nodes", type=int,
                                  required=True)
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  "defaults to buildings at 30km", type=float,
                                  default=30000)
-        self.args = self.parser.parse_args(args)
+        self.args = self.parser.parse_args(unk_args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        self.net.set_maxdev(args.max_dev)
         self.feasible_links = []
         self.filename = "graph-%s-%s-%d-%s-%d.graphml"\
-                        % (dataset, self.n, int(self.e), self.b, time.time())
+                        % (args.d, self.n, int(self.e), self.b, time.time())
         self._post_init()
         ubnt.load_devices()
 
@@ -98,14 +99,14 @@ class Growing_network(CN_Generator):
             return True
         return False
 
-    def add_edges(self):
+    def restructure(self):
         # run only every 10 nodes added
         if self.net.size() % 10 != 0:
             return
         # for each link that we found is feasible, but we havent added compute the edge effect
         for l in self.feasible_links:
-            # we do it only for the link between nodes of the biggest connected component
-            if not (l['src'].gid in self.net.biggest_sg() and l['dst'].gid in self.net.biggest_sg()):
+            # we do it only for the link between nodes of the main connected component
+            if not (l['src'].gid in self.net.main_sg() and l['dst'].gid in self.net.main_sg()):
                 l['effect'] = 0
                 continue
             edge = {}
@@ -113,7 +114,7 @@ class Growing_network(CN_Generator):
             edge[1] = l['dst'].gid
             edge['weight'] = 1  # For now do not use costs
             # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
-            l['effect'] = edgeffect(self.net.biggest_sg(), edge)
+            l['effect'] = edgeffect(self.net.main_sg(), edge)
         # We could just pick up the maximum, but if the link is not negotiable then we should do it again and again
         # so we order them and we pop them untill the first one connect
         self.feasible_links.sort(key=lambda x: x['effect'])

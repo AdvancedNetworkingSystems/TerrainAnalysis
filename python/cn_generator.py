@@ -29,7 +29,6 @@ class CN_Generator():
         self.parser.add_argument('-b', help="start building latlong (lat.dd,long.dd)", type=str,
                                  required=True)
         self.parser.set_defaults(plot=False)
-        
         if not DSN:
             self.t = terrain(self.DSN, dataset, ple=2.4)
         else:
@@ -62,7 +61,8 @@ class CN_Generator():
     def add_links(self, new_node):
         raise NotImplementedError
 
-    def add_edges(self):
+    def restructure(self):
+        # We dont raise expection because a strategy can implement no restructure
         pass
 
     def save_graph(self):
@@ -90,8 +90,7 @@ class CN_Generator():
                 print("Number of nodes:%d, infected:%d, susceptible:%d" % (self.net.size(), len(self.infected), len(self.susceptible)))
                 if self.args.plot:
                     self.plot()
-                #print(self.net.cost)
-            self.add_edges()
+            self.restructure()
             self.net.compute_minimum_bandwidth()
         # save result
         min_b = self.net.compute_minimum_bandwidth()
