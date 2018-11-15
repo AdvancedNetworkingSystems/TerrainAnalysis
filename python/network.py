@@ -113,7 +113,7 @@ class Network():
             try:
                 rev_path = nx.dijkstra_path(self.graph, d,
                                             self.gateway,
-                                            weight=compute_link_bandwidth)
+                                            weight=compute_link_quality)
             except nx.exception.NetworkXNoPath:
                 continue
             min_b = float('inf')
