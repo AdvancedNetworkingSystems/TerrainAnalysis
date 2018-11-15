@@ -35,7 +35,9 @@ class terrain():
         self.srid = '4326'
         self._set_dataset()
 
-    def _set_building_filter(self, codici):
+    def _set_building_filter(self, codici=['0201', '0202', '0203', '0211',
+                                           '0212', '0215', '0216', '0223',
+                                           '0224', '0225', '0226', '0227', '0228']):
         """Set the filter for the building from CTR.
         codici: set of strings representing the codici
             '0201': Civil Building
@@ -104,7 +106,7 @@ class terrain():
         self.buff = 0.5  # 1 point per metre
         comune = Comune.get_by_name(self.session, self.dataset.upper())
         self.polygon_area = comune.shape()
-        self._set_building_filter(['0201'])
+        self._set_building_filter()
         n_build_ctr = Building_CTR.count_buildings(self, self.polygon_area)
         n_build_osm = Building_OSM.count_buildings(self, self.polygon_area)
         if n_build_ctr > n_build_osm:
