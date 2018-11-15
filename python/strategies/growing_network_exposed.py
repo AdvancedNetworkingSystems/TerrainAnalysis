@@ -11,9 +11,9 @@ import networkx as nx
 
 
 class Growing_network_exposed(Growing_network):
-    def __init__(self, dataset, args=None, DSN=None):
+    def __init__(self, args, unk_args=None, DSN=None):
         self.exposed = set()
-        Growing_network.__init__(self, dataset, args, DSN=None)
+        Growing_network.__init__(self, args=args, unk_args=unk_args, DSN=None)
 
     def stop_condition(self):
         # recompute minimum bw at each node
