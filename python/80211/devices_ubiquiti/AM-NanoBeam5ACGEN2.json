@@ -3,8 +3,8 @@
   "code": "NanoBeam5Ac",
   "technology": "AirMax ac",
   "frequency": "5",
-  "beamwidth_H": 60,
-  "beamwidth_V": 120,
+  "beamwidth_az": 30,
+  "beamwidth_el": 30,
   "max_streams": 2,
   "gain_tx": 13,
   "gain_rx": 13,
@@ -35,7 +35,7 @@
     "MCS9":20
   },
   "capacity":{},
-  "V_elevation":{
+  "azimuth":{
     "-90":-20,
     "-75":-17,
     "-60":-17,
@@ -50,7 +50,7 @@
     "75":-16,
     "90":-20
   },
-  "H_elevation":{
+  "elevation":{
     "-90":-24,
     "-75":-20,
     "-60":-15,

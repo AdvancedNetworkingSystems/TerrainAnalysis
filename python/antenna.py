@@ -7,7 +7,7 @@ class Antenna:
         self.orientation = orientation
         self.ubnt_device = device
         self.device = ubnt.read_device(device[0])
-        self.beamwidth = (self.device['beamwidth_H'], self.device['beamwidth_V'])
+        self.beamwidth = (self.device['beamwidth_az'], self.device['beamwidth_el'])
         self.beamwidth_area = self.get_beamwidth_area()
 
     def get_beamwidth_area(self):

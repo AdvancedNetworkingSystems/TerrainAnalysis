@@ -3,11 +3,11 @@
   "code": "IsoStationAC",
   "technology": "AirMax ac",
   "frequency": "5",
-  "beamwidth_az": 45,
-  "beamwidth_el": 45,
+  "beamwidth_az": 90,
+  "beamwidth_el": 30,
   "max_streams": 1,
-  "gain_tx": 15.5,
-  "gain_rx": 15.5,
+  "gain_tx": 14,
+  "gain_rx": 14,
   "max_consumption": 8.5,
   "gbps": "10/100/1000",
   "rx_power":{
@@ -39,13 +39,13 @@
     "-90":-30,
     "-75":-30,
     "-60":-25,
-    "-45":-17,
+    "-45":-20,
     "-30":-10,
-    "-15":-4,
+    "-15":-6,
     "0":0,
-    "15":-4,
+    "15":-6,
     "30":-10,
-    "45":-17,
+    "45":-20,
     "60":-25,
     "75":-30,
     "90":-30
@@ -67,5 +67,5 @@
   },
   "weight": 0.725,
   "dimension": "174x174x150",
-  "average_price": 112
+  "average_price": 200
 }

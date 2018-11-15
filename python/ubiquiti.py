@@ -4,24 +4,29 @@ import csv
 import wifi
 
 
-devices_airfiber = ["AF-11FX", "AF-24", "AF-24HD", "AF-2X", "AF-3X",
-                    "AF-4X", "AF-5_AF-5U", "AF-5X",
-                    "AF-5XHD"]
-
-devices_airmax = ["AM-IsoStation5AC",
-                  "AM-IsoStationM5", "AM-LiteBeam5AC16120",
-                  "AM-LiteBeam5AC23", "AM-LiteBeam5ACGEN2",
-                  "AM-LiteBeamM523", "AM-NanoBeam2AC13",
-                  "AM-NanoBeam5ACGEN2", "AM-NanoBeamM516",
-                  "AM-NanoBeamM519", "AM-NanoStation5AC",
-                  "AM-NanoStation5ACL", "AM-PowerBeam2AC400",
-                  "AM-PowerBeam5AC300", "AM-PowerBeam5AC300ISO",
-                  "AM-PowerBeam5AC400", "AM-PowerBeam5AC400ISO",
-                  "AM-PowerBeam5AC500", "AM-PowerBeam5AC500ISO",
-                  "AM-PowerBeam5AC620", "AM-PowerBeam5ACGEN2",
-                  "AM-PowerBeam5ACISOGEN2", "AM-PowerBeamM2400",
-                  "AM-PowerBeamM5300", "AM-PowerBeamM5400",
-                  "AM-PowerBeamM5620"]
+# devices_airfiber = ["AF-11FX", "AF-24", "AF-24HD", "AF-2X", "AF-3X",
+#                     "AF-4X", "AF-5_AF-5U", "AF-5X",
+#                     "AF-5XHD"]
+# 
+# devices_airmax = ["AM-IsoStation5AC",
+#                   "AM-IsoStationM5", "AM-LiteBeam5AC16120",
+#                   "AM-LiteBeam5AC23", "AM-LiteBeam5ACGEN2",
+#                   "AM-LiteBeamM523", "AM-NanoBeam2AC13",
+#                   "AM-NanoBeam5ACGEN2", "AM-NanoBeamM516",
+#                   "AM-NanoBeamM519", "AM-NanoStation5AC",
+#                   "AM-NanoStation5ACL", "AM-PowerBeam2AC400",
+#                   "AM-PowerBeam5AC300", "AM-PowerBeam5AC300ISO",
+#                   "AM-PowerBeam5AC400", "AM-PowerBeam5AC400ISO",
+#                   "AM-PowerBeam5AC500", "AM-PowerBeam5AC500ISO",
+#                   "AM-PowerBeam5AC620", "AM-PowerBeam5ACGEN2",
+#                   "AM-PowerBeam5ACISOGEN2", "AM-PowerBeamM2400",
+#                   "AM-PowerBeamM5300", "AM-PowerBeamM5400",
+#                   "AM-PowerBeamM5620"]
+devices_airmax = ["AM-IsoStation5AC", "AM-IsoStation5AC_90",
+                  "AM-LiteBeam5ACGEN2", "AM-NanoBeam5ACGEN2",
+                  "AM-NanoStation5AC", "AM-NanoStation5ACL",
+                  "AM-PowerBeam5AC300ISO", "AM-PowerBeam5AC400ISO",
+                  "AM-PowerBeam5AC500ISO"]
 
 
 angles = [90, 75, 60, 45, 30, 15, 0, -15, -30, -45, -60, -75, -90]
