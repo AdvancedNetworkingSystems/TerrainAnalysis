@@ -82,22 +82,22 @@ class Growing_network(CN_Generator):
     def add_links(self, new_node):
         visible_links = self.check_connectivity(self.infected, new_node)
         # if there's at least one vaild link add the node to the network
+        print("testing new node")
+        event = 0
         if visible_links:
             visible_links.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links.pop()
             self.infected.append(link['src'])
             # check if current node has already antennas and try to connect to them
-            self.net.add_node(link['src'])
-            if link['dst'].gid not in self.net.graph:
-                code.interact(local=dict(globals(), **locals()))
-            if not self.net.add_link(link):
+            self.add_node(link['src'])
+            if not self.add_link(link):
                 # if this link is not feasible the following ones (worser) aren't either
                 self.net.del_node(link['src'])
                 self.infected.remove(link['src'])
                 return False
             if len(visible_links) > 1:
                 link = visible_links.pop()
-                self.net.add_link(link)
+                self.add_link(link)
             # add the remaining links to a list of feasible links
             self.feasible_links += visible_links
             return True
@@ -124,11 +124,6 @@ class Growing_network(CN_Generator):
         self.feasible_links.sort(key=lambda x: x['effect'])
         # Try to connect the best link (try again till something gets connected)
         while(self.feasible_links):
-            link = self.feasible_links.pop()
-            result = self.net.add_link(link)
-            print(result)
-            if result:
-                print("Added one edge left %d" % (len(self.feasible_links)))
+            if self.add_link(self.feasible_links.pop()):
+                print("Added one edge")
                 return
-            else:
-                print("Can't add this edge")
