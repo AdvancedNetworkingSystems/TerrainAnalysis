@@ -11,7 +11,7 @@ import networkx as nx
 
 
 class Growing_network_exposed(Growing_network):
-    def __init__(self, args, unk_args=None, DSN=None):
+    def __init__(self, args, unk_args={}, DSN=None):
         self.exposed = set()
         Growing_network.__init__(self, args=args, unk_args=unk_args, DSN=None)
 
@@ -23,13 +23,13 @@ class Growing_network_exposed(Growing_network):
         visible_links_infected = self.check_connectivity(self.infected,
                                                          new_node)
         visible_links_exposed = self.check_connectivity(self.exposed, new_node)
-        self.net.add_node(new_node)
+        self.add_node(new_node)
         node_added = False
         #FIXME: there is a bug involving infected. sometimes there are more nodes in the graph than infected
         if visible_links_infected:
             visible_links_infected.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links_infected.pop()
-            if self.net.add_link(link):
+            if self.add_link(link):
                 # If i can connect to an infected node I'm infected too,
                 # separate island connected to main net
                 self.infected.append(link['src'])
@@ -37,7 +37,7 @@ class Growing_network_exposed(Growing_network):
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links_exposed.pop()
-            if self.net.add_link(link):
+            if self.add_link(link):
                 if link['src'] not in self.infected:
                     self.infected.append(link['src'])  # If i wasn't conncted to anybody but i connected to an Exposed
                     self.infected.append(link['dst'])      # we are both infected (separate island though)
