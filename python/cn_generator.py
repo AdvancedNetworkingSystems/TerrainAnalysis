@@ -30,8 +30,7 @@ class CN_Generator():
                                  dest='plot', action='store_true')
         self.parser.add_argument('-b', help="start building latlong (lat.dd,long.dd)", type=str,
                                  required=True)
-        self.parser.add_argument('-n', help="number of nodes", type=int,
-                                 required=True)
+        self.parser.add_argument('-n', help="number of nodes", type=int)
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  " defaults to buildings at 30km", type=float,
                                  default=30000)
@@ -83,18 +82,19 @@ class CN_Generator():
     def stop_condition(self):
         raise NotImplementedError
 
-    def stop_condition_minbw(self):
+    def stop_condition_maxnodes(self):
+        return len(self.infected) > self.n
+
+    def stop_condition_minbw(self, bw=1):
         # recompute minimum bw at each node
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
         for n in self.net.graph.nodes():
             if n == self.net.gateway:
                 continue
-            if self.net.graph.node[n]['min_bw'] < 40:
-                return False
-        return len(self.infected) >= self.n
-
-
+            if self.net.graph.node[n]['min_bw'] < bw:
+                return True
+        return False
 
     def add_links(self, new_node):
         raise NotImplementedError

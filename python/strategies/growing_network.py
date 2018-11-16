@@ -22,6 +22,8 @@ class Growing_network(CN_Generator):
         self._post_init()
 
     def stop_condition(self):
+        if self.n:
+            return self.stop_condition_maxnodes()
         return self.stop_condition_minbw()
 
     def get_newnode(self):
