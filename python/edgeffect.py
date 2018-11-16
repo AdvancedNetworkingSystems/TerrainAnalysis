@@ -24,7 +24,7 @@ if __name__ == '__main__':
     g.add_edge(2, 3, weight=1)
     g.add_edge(3, 4, weight=0.2)
     g.add_edge(4, 5, weight=0.6)
-    
+
     edge = {}
     edge[0] = 1
     edge[1] = 4
