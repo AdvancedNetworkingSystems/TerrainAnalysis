@@ -161,7 +161,7 @@ class CN_Generator():
     def save_evolution(self):
         self.graph_to_animation()
         self.animation_file = '/tmp/index-animation.html'
-        self.animation.save(self.map_file)
+        self.animation.save(self.animation_file)
 
     def main(self):
         while not self.stop_condition():
@@ -186,5 +186,5 @@ class CN_Generator():
         if self.args.plot:
             self.save_evolution()
             print("A browsable map was saved in " + self.map_file)
-            #print("A browsable animated map was saved in " +
-            #      self.animation_file)
+            print("A browsable animated map was saved in " +
+                  self.animation_file)
