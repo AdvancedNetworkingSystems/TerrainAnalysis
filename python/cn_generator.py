@@ -144,11 +144,11 @@ class CN_Generator():
                         fill_color="green", weight=1,
                         color='green').add_to(self.map)
         for lat, lon in nx.get_node_attributes(self.net.graph, 'pos').values():
-            folium.Marker([lon, lat], popup='').add_to(self.map)
+            folium.Marker([lon, lat]).add_to(self.map)
         for frm, to, p in self.net.graph.edges(data=True):
             lat_f, lon_f = nx.get_node_attributes(self.net.graph, 'pos')[frm]
             lat_t, lon_t = nx.get_node_attributes(self.net.graph, 'pos')[to]
-            label = "Loss: %d\nRate: %d\nlink_per_antenna: %d" % \
+            label = "Loss: %d dB<br>Rate: %d mbps<br>link_per_antenna: %d" % \
                     (p['loss'], p['rate'], p['link_per_antenna'])
             folium.PolyLine(locations=[[lon_f, lat_f], [lon_t, lat_t]],
                             weight=3, popup=label).add_to(self.map)
