@@ -77,24 +77,25 @@ class CN_Generator():
 
     def graph_to_animation(self):
         quasi_centroid = self.t.polygon_area.representative_point()
-        self.m = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
-                zoom_start=14, tiles='OpenStreetMap')
+        self.animation = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
+                              zoom_start=14, tiles='OpenStreetMap')
         p = shapely.ops.cascaded_union([pl for pl in self.t.polygon_area])
         point_list = list(zip(*p.exterior.coords.xy))
-        folium.PolyLine(locations=[(y, x) for (x, y) in point_list], 
-                fill_color="green",
-                weight=1, color='green').add_to(self.m)
-        edges_s = sorted(self.net.graph.edges(data=True), key=lambda x: x[2]['event'])
-        nodes_s = sorted(self.net.graph.nodes(data=True), key=lambda x: x[1]['event'])
+        folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
+                        fill_color="green", weight=1,
+                        color='green').add_to(self.animation)
+        edges_s = sorted(self.net.graph.edges(data=True),
+                         key=lambda x: x[2]['event'])
+        nodes_s = sorted(self.net.graph.nodes(data=True),
+                         key=lambda x: x[1]['event'])
         last_event = max(edges_s[-1][2]['event'], nodes_s[-1][1]['event'])
         e_coords = []
         e_times = []
         for e in edges_s:
             e_coords.append([list(self.net.graph.nodes()[e[0]]['pos']),
-                          list(self.net.graph.nodes()[e[1]]['pos'])])
+                            list(self.net.graph.nodes()[e[1]]['pos'])])
             e_times.append(1530744263666+e[2]['event']*36000000)
             #FIXME starting time is just a random moment
-            
         features_edges = {
           'type': 'Feature',
           'geometry': {
@@ -105,15 +106,14 @@ class CN_Generator():
               'times':  e_times,
               }
            }
- 
         n_coords = []
         n_times = []
 
         for n in nodes_s:
             n_coords.append([n[1]['pos'], n[1]['pos']])
             n_times.append(1530744263666+n[1]['event']*36000000)
-            
-        # the only way I found to plot the nodes is pretend they are one-point lines
+        # the only way I found to plot the nodes is pretend they are
+        # one-point lines
         features_nodes = {
           'type': 'Feature',
           'geometry': {
@@ -122,55 +122,48 @@ class CN_Generator():
               },
            'properties': {
               'times':  n_times,
-              'style':{
+              'style': {
                   'color': 'red',
                   'width': 20,
                   }
               }
            }
 
-
         plugins.TimestampedGeoJson({
             'type': 'FeatureCollection',
             'features': [features_edges, features_nodes]},
-            transition_time=500, auto_play=False).add_to(self.m)
-
+            transition_time=500, auto_play=False).add_to(self.animation)
 
     def graph_to_leaflet(self):
         quasi_centroid = self.t.polygon_area.representative_point()
-        self.m = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
-                zoom_start=14, tiles='Stamen Terrain')
+        self.map = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
+                              zoom_start=14, tiles='OpenStreetMap')
         p = shapely.ops.cascaded_union([pl for pl in self.t.polygon_area])
         point_list = list(zip(*p.exterior.coords.xy))
-        folium.PolyLine(locations=[(y, x) for (x, y) in point_list], 
-                fill_color="green",
-                weight=1, color='green').add_to(self.m)
+        folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
+                        fill_color="green", weight=1,
+                        color='green').add_to(self.map)
         for lat, lon in nx.get_node_attributes(self.net.graph, 'pos').values():
-            folium.Marker([lon, lat], popup='').add_to(self.m)
+            folium.Marker([lon, lat], popup='').add_to(self.map)
         for frm, to, p in self.net.graph.edges(data=True):
             lat_f, lon_f = nx.get_node_attributes(self.net.graph, 'pos')[frm]
             lat_t, lon_t = nx.get_node_attributes(self.net.graph, 'pos')[to]
             label = "Loss: %d\nRate: %d\nlink_per_antenna: %d" % \
                     (p['loss'], p['rate'], p['link_per_antenna'])
             folium.PolyLine(locations=[[lon_f, lat_f], [lon_t, lat_t]],
-                            weight=3, popup=label).add_to(self.m)
+                            weight=3, popup=label).add_to(self.map)
 
-    def plot(self):
-        nx.draw(self.net.graph, pos=nx.get_node_attributes(self.net.graph, 'pos'))
-        plt.draw()
+    def plot_map(self):
         self.graph_to_leaflet()
-        if self.display_plot:
-            self.graph_to_leaflet()
-            map_file = '/tmp/index.html'
-            self.m.save(map_file)
-            print("A browsable map was saved in " + map_file)
-            self.graph_to_animation()
-            map_file = '/tmp/index-animation.html'
-            self.m.save(map_file)
-            print("A browsable animated map was saved in " + map_file)
+        self.map_file = '/tmp/index.html'
+        self.map.save(self.map_file)
+
+    def save_evolution(self):
+        self.graph_to_animation()
+        self.animation_file = '/tmp/index-animation.html'
+        self.animation.save(self.map_file)
 
     def main(self):
-        self.display_plot = True
         while not self.stop_condition():
             self.round += 1
             # pick random node
@@ -179,16 +172,19 @@ class CN_Generator():
             if(self.add_links(new_node)):
                 # update area of susceptible nodes
                 self.get_susceptibles()
-                print("Number of nodes:%d, infected:%d, susceptible:%d" % (self.net.size(), len(self.infected), len(self.susceptible)))
+                print("Number of nodes:%d, infected:%d, susceptible:%d"
+                      % (self.net.size(), len(self.infected),
+                         len(self.susceptible)))
                 if self.args.plot:
-                    self.plot()
-                #print(self.net.cost)
+                    self.plot_map()
             self.add_edges()
             self.net.compute_minimum_bandwidth()
         # save result
         min_b = self.net.compute_minimum_bandwidth()
         for k, v in self.net.compute_metrics().items():
             print(k, v)
-        #import code
-        #code.interact(local=locals())
-        #self.save_graph()
+        if self.args.plot:
+            self.save_evolution()
+            print("A browsable map was saved in " + self.map_file)
+            #print("A browsable animated map was saved in " +
+            #      self.animation_file)
