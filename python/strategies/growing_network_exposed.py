@@ -1,83 +1,49 @@
 from multiprocessing import Pool
 import random
 import matplotlib.pyplot as plt
-from cn_generator import CN_Generator
+from strategies.growing_network import Growing_network
 from misc import Susceptible_Buffer
 import argparse
 import time
+import ubiquiti as ubnt
+from edgeffect import edgeffect
+import networkx as nx
 
 
-class Growing_network_exposed(CN_Generator):
-
-    def __init__(self, dataset, args=None, DSN=None):
+class Growing_network_exposed(Growing_network):
+    def __init__(self, args, unk_args=None, DSN=None):
         self.exposed = set()
-        self.sb = Susceptible_Buffer()
-        CN_Generator.__init__(self, dataset, DSN=None)
-        self.parser.add_argument('-n', help="number of nodes", type=int,
-                                 required=True)
-        self.parser.add_argument('-e', help="expansion range (in meters), defaults"
-                                 "to buildings at 30km", type=float,
-                                 default=30000)
-        self.args = self.parser.parse_args(args)
-        self.n = self.args.n
-        self.e = self.args.e
-        self.b = self.args.b
-        self.filename = "graph-%s-%s-%d-%s-%d.graphml" % (dataset, self.n, int(self.e), self.b, time.time())
-        self._post_init()
-
-    def get_newnode(self):
-        new_node = random.sample(self.susceptible, 1)[0]
-        self.susceptible.remove(new_node)
-        return new_node
-
-    def get_susceptibles(self):
-        geoms = [g.shape() for g in (self.infected + list(self.exposed))]
-        self.sb.set_shape(geoms)
-
-        self.susceptible = set(self.t.get_building(
-                               self.sb.get_buffer(self.e))
-                               ) - set(self.infected)
+        Growing_network.__init__(self, args=args, unk_args=unk_args, DSN=None)
 
     def stop_condition(self):
+        # recompute minimum bw at each node
         return len(self.infected) >= self.n
 
-    def check_link(self, source, destination):
-        loss = self.t.get_loss(destination, source, h1=2, h2=2)
-        if loss > 0:
-            # print("Loss between %d and %d is %f" % (i.gid, new_node.gid, loss))
-            return (source, destination, loss)
-
-    def check_connectivity(self, set_nodes, new_node):
-        visible_links = []
-        for i in set_nodes:
-            link = self.check_link(source=new_node, destination=i)
-            if link:
-                visible_links.append(link)
-        # with Pool(5) as p:
-        #     self.new_node = new_node
-        #     visible_links = list(set(p.map(self.check_link, self.infected)) - None)
-        return visible_links
-
     def add_links(self, new_node):
-        visible_links_infected = self.check_connectivity(self.infected, new_node)
+        visible_links_infected = self.check_connectivity(self.infected,
+                                                         new_node)
         visible_links_exposed = self.check_connectivity(self.exposed, new_node)
-        self.graph.add_node(new_node.gid, pos=new_node.xy())
+        self.net.add_node(new_node)
         node_added = False
+        #FIXME: there is a bug involving infected. sometimes there are more nodes in the graph than infected
         if visible_links_infected:
-            visible_links_infected.sort(key=lambda x: x[2], reverse=True)
+            visible_links_infected.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links_infected.pop()
-            self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-            self.infected.append(link[0])   # If i can connect to an infected node I'm infected too, separate island connected to main net
-            node_added = True
+            if self.net.add_link(link):
+                # If i can connect to an infected node I'm infected too,
+                # separate island connected to main net
+                self.infected.append(link['src'])
+                node_added = True
         if visible_links_exposed:
-            visible_links_exposed.sort(key=lambda x: x[2], reverse=True)
+            visible_links_exposed.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links_exposed.pop()
-            self.graph.add_edge(link[0].gid, link[1].gid, weight=link[2])
-            if link[0] not in self.infected:
-                self.infected.append(link[0])  # If i wasn't conncted to anybody but i connected to an Exposed
-                self.infected.append(link[1])      # we are both infected (separate island though)
-                self.exposed.remove(link[1])
-            node_added = True
+            if self.net.add_link(link):
+                if link['src'] not in self.infected:
+                    self.infected.append(link['src'])  # If i wasn't conncted to anybody but i connected to an Exposed
+                    self.infected.append(link['dst'])      # we are both infected (separate island though)
+                    self.exposed.remove(link['dst'])
+                node_added = True
         if not node_added:  # Node not connectable to anybody
             self.exposed.add(new_node)
+        self.feasible_links += visible_links_exposed + visible_links_infected
         return True

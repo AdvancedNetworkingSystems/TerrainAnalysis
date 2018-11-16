@@ -3,7 +3,8 @@
   "code": "LiteBeam5AC16120",
   "technology": "AirMax ac",
   "frequency": "5",
-  "beamwidth":null,
+  "beamwidth_H": 120,
+  "beamwidth_V": 60,
   "max_streams": 2,
   "gain_tx": 16,
   "gain_rx": 16,
@@ -34,7 +35,7 @@
     "MCS9":21
   },
   "capacity":{},
-  "V_elevation":{
+  "elevation":{
     "-90":-25,
     "-75":-30,
     "-60":-25,
@@ -49,7 +50,7 @@
     "75":-25,
     "90":-21
   },
-  "H_elevation":{
+  "azimuth":{
     "-90":-17,
     "-75":-17,
     "-60":-17,

@@ -35,7 +35,9 @@ class terrain():
         self.srid = '4326'
         self._set_dataset()
 
-    def _set_building_filter(self, codici):
+    def _set_building_filter(self, codici=['0201', '0202', '0203', '0211',
+                                           '0212', '0215', '0216', '0223',
+                                           '0224', '0225', '0226', '0227', '0228']):
         """Set the filter for the building from CTR.
         codici: set of strings representing the codici
             '0201': Civil Building
@@ -104,11 +106,9 @@ class terrain():
         self.buff = 0.5  # 1 point per metre
         comune = Comune.get_by_name(self.session, self.dataset.upper())
         self.polygon_area = comune.shape()
-        self._set_building_filter(['0201'])
-        n_build_ctr = Building_CTR.count_building(self, self.polygon_area)
-        n_build_osm = Building_OSM.count_building(self, self.polygon_area)
-        print(n_build_ctr)
-        print(n_build_osm)
+        self._set_building_filter()
+        n_build_ctr = Building_CTR.count_buildings(self, self.polygon_area)
+        n_build_osm = Building_OSM.count_buildings(self, self.polygon_area)
         if n_build_ctr > n_build_osm:
             self.building_class = Building_CTR
             print("Buildings from CTR")
@@ -137,7 +137,7 @@ class terrain():
         p2 = b2.coords().wkt
         try:
             profile = self._profile_osm(p1, p2)
-            link = Link(profile, h1, h2, self.ple)
+            link = Link(profile, h1, h2, self.ple, p1=b1.coords(), p2=b2.coords())
             # fig = plt.figure()
             # link.plot(fig, pltid=221, text="prova")
             # plt.show()
@@ -145,8 +145,29 @@ class terrain():
             return -1
         return link.loss
 
+    def get_link(self, b1, b2, h1=2, h2=2):
+        """Calculate the path loss between two buildings_pair
+        b1: source Building object
+        b2: destination Building object
+        h1: height of the antenna on the roof of b1
+        h2: height of the antenna on the roof of b2
+        """
+        p1 = b1.coords().wkt
+        p2 = b2.coords().wkt
+        try:
+            profile = self._profile_osm(p1, p2)
+            link = Link(profile, h1=h1, h2=h2, ple=self.ple, p1=b1.coords(), p2=b2.coords())
+            # fig = plt.figure()
+            # link.plot(fig, pltid=221, text="prova")
+            # plt.show()
+        except (ZeroDivisionError, ProfileException) as e:
+            return None
+        return link
+
+
     def get_building_gid(self, gid):
         return self.building_class.get_building_gid(self.session, gid)
 
-    def get_building(self, shape):
-        return self.building_class.get_building(self, shape, area=self.polygon_area)
+    def get_buildings(self, shape):
+        b = self.building_class.get_buildings(self, shape, area=self.polygon_area)
+        return b

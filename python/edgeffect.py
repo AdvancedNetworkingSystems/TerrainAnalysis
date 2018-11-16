@@ -2,6 +2,8 @@ import networkx as nx
 
 
 def edgeffect(G, edge):
+    # First of all convert the graph to undirected graph
+    G = G.to_undirected()
     Tx = nx.bfs_tree(G, edge[0])
     Ax = {n for n in Tx.nodes() if nx.shortest_path_length(G, n, edge[1]) + edge['weight'] <
                                    nx.shortest_path_length(G, n, edge[0])}
