@@ -25,6 +25,7 @@ def poor_mans_color_gamma(bitrate):
             return blue_to_red[b]
     return blue_to_red[200]
 
+
 class CN_Generator():
 
     DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
@@ -38,7 +39,7 @@ class CN_Generator():
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
         self.parser.add_argument('-b',
-                                 help="start building latlong (lat.dd,long.dd)",
+                                 help="gateway latlong (lat.dd,long.dd)",
                                  type=str, required=True)
         self.parser.add_argument('-n', help="number of nodes", type=int)
         self.parser.add_argument('-e', help="expansion range (in meters),"
