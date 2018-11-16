@@ -121,9 +121,7 @@ class Link:
         if downscale > 0:
             self._downscale(downscale)
         self._polygonize()
-        self.F60 = self._fresnel(clearance=True)
         self.LOS = LineString([self.A, self.B])
-        self.F = self._fresnel()
         if self.terrain.intersects(self.LOS):
             # Los passing trough terrain
             obstacles = self.terrain.intersection(self.LOS)
@@ -133,6 +131,8 @@ class Link:
             # LOS is free
             self.loss = 0
             self.status = 1  # LOS FREE
+            self.F = self._fresnel()
+            self.F60 = self._fresnel(clearance=True)
             if self.terrain.intersects(self.F60):
                 # Fresnel unclear
                 knifes = self.F60.intersection(self.terrain)

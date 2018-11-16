@@ -38,6 +38,11 @@ def parse_args():
                         type=int, const=float('inf'), nargs='?',
                         default=float('inf'))
 
+    parser.add_argument("-P",
+                        help="parallel SQL client processes",
+                        type=int, default=1)
+
+
     args, unknown = parser.parse_known_args()
     return args, unknown
 

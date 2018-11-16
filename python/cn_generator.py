@@ -2,7 +2,7 @@ from libterrain.libterrain import terrain
 from geoalchemy2.shape import to_shape
 from shapely.geometry.polygon import Polygon
 from shapely.geometry import Point
-from multiprocessing import Pool
+from multiprocess import Pool
 from misc import NoGWError
 import shapely
 import random
@@ -17,6 +17,8 @@ import ubiquiti as ubnt
 from edgeffect import edgeffect
 
 
+pool = Pool(5)
+
 def poor_mans_color_gamma(bitrate):
     blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
                    50: '#660066', 30: '#660000'}
@@ -25,6 +27,9 @@ def poor_mans_color_gamma(bitrate):
             return blue_to_red[b]
     return blue_to_red[200]
 
+
+def check_link(foo, source, destination):
+    return foo.check_link(source=source, destination=destination)
 
 class CN_Generator():
 
@@ -49,12 +54,17 @@ class CN_Generator():
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        try:
+            self.P = self.args.P
+        except AttributeError:
+            self.P = 1
+        #self.pool = Pool(self.P)
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
         if not DSN:
-            self.t = terrain(self.DSN, dataset, ple=2.4)
+            self.t = terrain(self.DSN, dataset, ple=2.4, processes=args.P)
         else:
-            self.t = terrain(DSN, dataset, ple=2.4)
+            self.t = terrain(DSN, dataset, ple=2.4, processes=args.P)
         self.event_counter = 0
         ubnt.load_devices()
 
@@ -121,13 +131,16 @@ class CN_Generator():
             link['dst_orient'] = phy_link.Borient
             return link
 
-    def check_connectivity(self, set_nodes, new_node):
+    def check_connectivity(self, nodes_set, new_node):
         visible_links = []
-        for i in set_nodes:
-            link = self.check_link(source=new_node, destination=i)
-            if link:
-                visible_links.append(link)
-        return visible_links
+        params = [{'source': new_node, 'destination': i} for i in nodes_set]
+        links = pool.map(self.check_link, params)
+        return [link for link in links if link]
+        #for i in set_nodes:
+        #    link = self.check_link(source=new_node, destination=i)
+        #    if link:
+        #        visible_links.append(link)
+        #return visible_links
 
     def restructure(self):
         raise NotImplementedError

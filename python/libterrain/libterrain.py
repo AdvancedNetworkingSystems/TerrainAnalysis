@@ -1,7 +1,7 @@
 import random
 import shapely
 from sqlalchemy import create_engine, and_
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import PersistentConnectionPool, ThreadedConnectionPool
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2.functions import GenericFunction
 from geoalchemy2 import Geometry
@@ -21,14 +21,12 @@ class ST_MakeEnvelope(GenericFunction):
 
 
 class terrain():
-    def __init__(self, DSN, dataset, ple):
+    def __init__(self, DSN, dataset, ple, processes=1):
         self.DSN = DSN
         self.dataset = dataset
         self.ple = ple
         # Connection to PSQL
-        self.tcp = ThreadedConnectionPool(1, 100, DSN)
-        conn = self.tcp.getconn()
-        self.cur = conn.cursor()
+        self.tcp = ThreadedConnectionPool(1, processes, DSN)
         engine = create_engine(DSN, client_encoding='utf8', echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
@@ -64,7 +62,9 @@ class terrain():
         self.codici = codici
 
     def _profile_osm(self, p1, p2):
-        self.cur.execute("""WITH buffer AS(
+        conn = self.tcp.getconn()
+        cur = self.conn.cursor()
+        cur.execute("""WITH buffer AS(
                                 SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
                             ),
                             lidar AS(
@@ -89,8 +89,8 @@ class terrain():
                             lidar.z
                             FROM lidar ORDER BY lidar.distance;
                         """.format(self.srid, self.lidar_table, p1, p2, self.buff))
-        q_result = self.cur.fetchall()
-        if self.cur.rowcount == 0:
+        q_result = cur.fetchall()
+        if cur.rowcount == 0:
             raise ProfileException("No profile")
         # remove invalid points
         profile = filter(lambda a: a[0] != -9999, q_result)
