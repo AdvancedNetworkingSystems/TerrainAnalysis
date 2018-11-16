@@ -49,7 +49,7 @@ class Network():
         device0 = None
         link_per_antenna = 2
         # loop trough the antenna of the node
-        for antenna in self.graph.nodes[link['src'].gid]['antennas']:
+        for antenna in self.graph.nodes[link['dst'].gid]['antennas']:
             if antenna.check_node_vis(link_angles=link['dst_orient']):
                 ant1 = antenna
                 rate0, device0 = ubnt.get_fastest_link_hardware(link['loss'],
@@ -73,10 +73,10 @@ class Network():
                         link_per_antenna = l[2]['link_per_antenna'] + 2
                         l[2]['link_per_antenna'] += 2
                 break
-
         if not ant1:
             # Antenna not founded so we add it
-            if(len(self.graph.nodes[link['src'].gid]['antennas']) >= self.max_dev):
+            n_ant = len(self.graph.nodes[link['dst'].gid]['antennas'])
+            if(n_ant >= self.max_dev):
                 # Antenna can't be added because we reached the saturtion, no link.
                 return False
             rate1, device1 = ubnt.get_fastest_link_hardware(link['loss'])
@@ -86,7 +86,7 @@ class Network():
             rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device1[0],
                                                  device1[0])
             device0 = device1
-            ant1 = self.add_antenna(link['dst'].gid, device1, link['src_orient'])
+            ant1 = self.add_antenna(link['dst'].gid, device1, link['dst_orient'])
 
         # find proper device add antenna to local node
         ant0 = self.add_antenna(link['src'].gid, device0, link['src_orient'])

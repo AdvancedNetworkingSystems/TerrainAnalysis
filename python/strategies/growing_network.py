@@ -8,6 +8,7 @@ import time
 import ubiquiti as ubnt
 from antenna import Antenna
 from edgeffect import edgeffect
+import code
 
 
 class Growing_network(CN_Generator):
@@ -56,7 +57,7 @@ class Growing_network(CN_Generator):
         return len(self.infected) >= self.n
 
     def check_link(self, source, destination):
-        phy_link = self.t.get_link(destination, source, h1=2, h2=2)
+        phy_link = self.t.get_link(source, destination, h1=2, h2=2)
         if phy_link and phy_link.loss > 0:
             link = {}
             link['src'] = source
@@ -87,9 +88,12 @@ class Growing_network(CN_Generator):
             self.infected.append(link['src'])
             # check if current node has already antennas and try to connect to them
             self.net.add_node(link['src'])
+            if link['dst'].gid not in self.net.graph:
+                code.interact(local=dict(globals(), **locals()))
             if not self.net.add_link(link):
                 # if this link is not feasible the following ones (worser) aren't either
                 self.net.del_node(link['src'])
+                self.infected.remove(link['src'])
                 return False
             if len(visible_links) > 1:
                 link = visible_links.pop()
@@ -101,7 +105,7 @@ class Growing_network(CN_Generator):
 
     def restructure(self):
         # run only every 10 nodes added
-        if self.net.size() % 10 != 0:
+        if self.net.size() % 5 != 0:
             return
         # for each link that we found is feasible, but we havent added compute the edge effect
         for l in self.feasible_links:
@@ -120,6 +124,11 @@ class Growing_network(CN_Generator):
         self.feasible_links.sort(key=lambda x: x['effect'])
         # Try to connect the best link (try again till something gets connected)
         while(self.feasible_links):
-            if self.net.add_link(self.feasible_links.pop()):
-                print("Added one edge")
+            link = self.feasible_links.pop()
+            result = self.net.add_link(link)
+            print(result)
+            if result:
+                print("Added one edge left %d" % (len(self.feasible_links)))
                 return
+            else:
+                print("Can't add this edge")

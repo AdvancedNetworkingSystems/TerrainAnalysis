@@ -41,7 +41,10 @@ class Link:
         rel_pos = np.subtract(trg, src)
         yaw = m.atan2(rel_pos[1], rel_pos[0])
         pitch = m.atan2(rel_pos[2], self.distance)
-        return (m.degrees(yaw), m.degrees(pitch))
+        #yaw and pitch are in the range -pi - pi
+        #lets add 180° (to avoid pi approx) to the degree to have them in the space
+        # 0-360°
+        return (m.degrees(yaw) + 180, m.degrees(pitch) + 180)
 
     def _apply_earth_curvature(self):
         n_points = len(self.d)

@@ -90,8 +90,9 @@ class CN_Generator():
                 print("Number of nodes:%d, infected:%d, susceptible:%d" % (self.net.size(), len(self.infected), len(self.susceptible)))
                 if self.args.plot:
                     self.plot()
-            self.restructure()
-            self.net.compute_minimum_bandwidth()
+                self.restructure()
+                self.net.compute_minimum_bandwidth()
+            #input("Press Enter to continue...")
         # save result
         min_b = self.net.compute_minimum_bandwidth()
         for k, v in self.net.compute_metrics().items():
