@@ -17,6 +17,15 @@ import ubiquiti as ubnt
 from edgeffect import edgeffect
 
 
+def poor_mans_color_gamma(bitrate):
+    blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
+                   50: '#660066', 30: '#660000'}
+    for b in sorted(blue_to_red):
+        if bitrate < b:
+            return blue_to_red[b]
+    return blue_to_red[200]
+
+
 class CN_Generator():
 
     DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
@@ -238,8 +247,11 @@ class CN_Generator():
             lat_t, lon_t = nx.get_node_attributes(self.net.graph, 'pos')[to]
             label = "Loss: %d dB<br>Rate: %d mbps<br>link_per_antenna: %d" % \
                     (p['loss'], p['rate'], p['link_per_antenna'])
+            weight = 1 + 8/p['link_per_antenna']  # reasonable defaults
+            color = poor_mans_color_gamma(p['rate'])
             folium.PolyLine(locations=[[lon_f, lat_f], [lon_t, lat_t]],
-                            weight=3, popup=label).add_to(self.map)
+                            weight=weight, popup=label,
+                            color=color).add_to(self.map)
 
     def plot_map(self):
         self.graph_to_leaflet()
