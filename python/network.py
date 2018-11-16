@@ -48,22 +48,27 @@ class Network():
         ant1 = None
         device0 = None
         link_per_antenna = 2
-        # loop trough the antenna of the node
+        # loop trough the antennas of the node
         for antenna in self.graph.nodes[link['dst'].gid]['antennas']:
             if antenna.check_node_vis(link_angles=link['dst_orient']):
                 ant1 = antenna
-                rate0, device0 = ubnt.get_fastest_link_hardware(link['loss'],
-                                        target=antenna.ubnt_device[0])
+                rate0, device0 = ubnt.get_fastest_link_hardware(
+                                    link['loss'],
+                                    target=antenna.ubnt_device[0])
                 if not rate0:
-                    # no radio available for this link loss, target antenna pair
-                    # try with a better antenna 
-                    # TODO: We can have multiple antenna in the same viewshed -> must doublecheck it
-                    #       No we select the first one we find, but we should search for the optimal one (max rate)
+                    # no radio available for this (link loss, target antenna)
+                    # try with a better antenna
+                    # TODO: We can have multiple antenna in the same viewshed
+                    # -> must doublecheck it
+                    # Now we select the first one we find, but we should search
+                    # for the optimal one (max rate)
                     ant1 = None
                     break
                 rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device0[0],
-                                        antenna.ubnt_device[0])
-                # TODO: check any link connected with ant1, find the sharing factor, add one to its sharing factor, store the sharing factor in the new link  
+                                                     antenna.ubnt_device[0])
+                # TODO: check any link connected with ant1, find the sharing
+                # factor, add one to its sharing factor, store the sharing
+                # factor in the new link
                 for l in self.graph.out_edges(link['dst'].gid, data=True):
                     if l[2]['src_ant'] == antenna:
                         link_per_antenna = l[2]['link_per_antenna'] + 2
