@@ -25,7 +25,7 @@ class Growing_network_exposed(Growing_network):
         visible_links_exposed = self.check_connectivity(self.exposed, new_node)
         self.add_node(new_node)
         node_added = False
-        #FIXME: there is a bug involving infected. sometimes there are more nodes in the graph than infected
+        # FIXME: there is a bug involving infected. sometimes there are more nodes in the graph than infected
         if visible_links_infected:
             visible_links_infected.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links_infected.pop()

@@ -9,7 +9,6 @@ from antenna import Antenna
 import code
 
 
-
 class Growing_network(CN_Generator):
 
     def __init__(self, args, unk_args=None, DSN=None):
@@ -55,4 +54,3 @@ class Growing_network(CN_Generator):
             self.feasible_links += visible_links
             return True
         return False
-

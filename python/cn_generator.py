@@ -16,6 +16,7 @@ from folium import plugins
 import ubiquiti as ubnt
 from edgeffect import edgeffect
 
+
 class CN_Generator():
 
     DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
@@ -149,6 +150,7 @@ class CN_Generator():
             if self.add_link(self.feasible_links.pop()):
                 print("Added one edge")
                 return
+
     def add_node(self, node):
         self.event_counter += 1
         return self.net.add_node(node, attrs={'event': self.event_counter})
@@ -163,7 +165,7 @@ class CN_Generator():
     def graph_to_animation(self):
         quasi_centroid = self.t.polygon_area.representative_point()
         self.animation = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
-                              zoom_start=14, tiles='OpenStreetMap')
+                                    zoom_start=14, tiles='OpenStreetMap')
         p = shapely.ops.cascaded_union([pl for pl in self.t.polygon_area])
         point_list = list(zip(*p.exterior.coords.xy))
         folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
@@ -179,40 +181,40 @@ class CN_Generator():
         for e in edges_s:
             e_coords.append([list(self.net.graph.nodes()[e[0]]['pos']),
                             list(self.net.graph.nodes()[e[1]]['pos'])])
-            e_times.append(1530744263666+e[2]['event']*36000000)
-            #FIXME starting time is just a random moment
-        features_edges = {
-          'type': 'Feature',
-          'geometry': {
-              'type': 'MultiLineString',
-              'coordinates': e_coords,
-              },
-           'properties': {
-              'times':  e_times,
-              }
-           }
+            e_times.append(1530744263666 + e[2]['event'] * 36000000)
+            # FIXME starting time is just a random moment
+            features_edges = {
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'MultiLineString',
+                    'coordinates': e_coords,
+                },
+                'properties': {
+                    'times': e_times,
+                }
+            }
         n_coords = []
         n_times = []
 
         for n in nodes_s:
             n_coords.append([n[1]['pos'], n[1]['pos']])
-            n_times.append(1530744263666+n[1]['event']*36000000)
+            n_times.append(1530744263666 + n[1]['event'] * 36000000)
         # the only way I found to plot the nodes is pretend they are
         # one-point lines
         features_nodes = {
-          'type': 'Feature',
-          'geometry': {
-              'type': 'MultiLineString',
-              'coordinates': n_coords,
-              },
-           'properties': {
-              'times':  n_times,
-              'style': {
-                  'color': 'red',
-                  'width': 20,
-                  }
-              }
-           }
+            'type': 'Feature',
+            'geometry': {
+                'type': 'MultiLineString',
+                'coordinates': n_coords,
+            },
+            'properties': {
+                'times': n_times,
+                'style': {
+                    'color': 'red',
+                    'width': 20,
+                }
+            }
+        }
 
         plugins.TimestampedGeoJson({
             'type': 'FeatureCollection',
