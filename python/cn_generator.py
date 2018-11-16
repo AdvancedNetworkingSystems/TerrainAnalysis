@@ -16,6 +16,7 @@ from folium import plugins
 import ubiquiti as ubnt
 from edgeffect import edgeffect
 
+
 class CN_Generator():
 
     DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
@@ -28,8 +29,9 @@ class CN_Generator():
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
-        self.parser.add_argument('-b', help="start building latlong (lat.dd,long.dd)", type=str,
-                                 required=True)
+        self.parser.add_argument('-b',
+                                 help="start building latlong (lat.dd,long.dd)",
+                                 type=str, required=True)
         self.parser.add_argument('-n', help="number of nodes", type=int)
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  " defaults to buildings at 30km", type=float,
@@ -116,10 +118,6 @@ class CN_Generator():
             link = self.check_link(source=new_node, destination=i)
             if link:
                 visible_links.append(link)
-        # with Pool(5) as p:
-        #   TODO: fix client mutlithreading
-        #   self.new_node = new_node
-        #   visible_links = list(set(p.map(self.check_link, self.infected)) - None)
         return visible_links
 
     def restructure(self):
@@ -129,26 +127,30 @@ class CN_Generator():
         # run only every 10 nodes added
         if self.net.size() % 5 != 0:
             return
-        # for each link that we found is feasible, but we havent added compute the edge effect
+        # for each link that we found is feasible, but we havent added compute
+        # the edge effect
         for l in self.feasible_links:
-            # we do it only for the link between nodes of the main connected component
-            if not (l['src'].gid in self.net.main_sg() and l['dst'].gid in self.net.main_sg()):
+            # we do it only for the link between nodes of the main connected
+            # component
+            if not (l['src'].gid in self.net.main_sg() and l['dst'].gid in
+                    self.net.main_sg()):
                 l['effect'] = 0
                 continue
             edge = {}
             edge[0] = l['src'].gid
             edge[1] = l['dst'].gid
             edge['weight'] = 1  # For now do not use costs
-            # TODO: What cost should we use? Can use bandwidth since it depends on the antenna
             l['effect'] = edgeffect(self.net.main_sg(), edge)
-        # We could just pick up the maximum, but if the link is not negotiable then we should do it again and again
-        # so we order them and we pop them untill the first one connect
+        # We could just pick up the maximum, but if the link is not negotiable
+        # then we should do it again and again so we order them and we pop them
+        # untill the first one connect
         self.feasible_links.sort(key=lambda x: x['effect'])
-        # Try to connect the best link (try again till something gets connected)
+        # Try to connect the best link (try again till it gets connected)
         while(self.feasible_links):
             if self.add_link(self.feasible_links.pop()):
                 print("Added one edge")
                 return
+
     def add_node(self, node):
         self.event_counter += 1
         return self.net.add_node(node, attrs={'event': self.event_counter})
@@ -162,8 +164,9 @@ class CN_Generator():
 
     def graph_to_animation(self):
         quasi_centroid = self.t.polygon_area.representative_point()
-        self.animation = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
-                              zoom_start=14, tiles='OpenStreetMap')
+        self.animation = folium.Map(location=(quasi_centroid.y,
+                                    quasi_centroid.x),
+                                    zoom_start=14, tiles='OpenStreetMap')
         p = shapely.ops.cascaded_union([pl for pl in self.t.polygon_area])
         point_list = list(zip(*p.exterior.coords.xy))
         folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
