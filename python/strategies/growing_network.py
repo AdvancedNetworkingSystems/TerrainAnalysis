@@ -1,6 +1,5 @@
 from multiprocessing import Pool
 import random
-import matplotlib.pyplot as plt
 from cn_generator import CN_Generator
 from misc import Susceptible_Buffer
 import argparse
@@ -23,7 +22,7 @@ class Growing_network(CN_Generator):
     def stop_condition(self):
         if self.n:
             return self.stop_condition_maxnodes()
-        return self.stop_condition_minbw()
+        return self.stop_condition_minbw(200)
 
     def get_newnode(self):
         return self.get_random_node()

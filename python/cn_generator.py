@@ -133,14 +133,11 @@ class CN_Generator():
 
     def check_connectivity(self, nodes_set, new_node):
         visible_links = []
-        params = [{'source': new_node, 'destination': i} for i in nodes_set]
-        links = pool.map(self.check_link, params)
-        return [link for link in links if link]
-        #for i in set_nodes:
-        #    link = self.check_link(source=new_node, destination=i)
-        #    if link:
-        #        visible_links.append(link)
-        #return visible_links
+        for i in nodes_set:
+            link = self.check_link(source=new_node, destination=i)
+            if link:
+                visible_links.append(link)
+        return visible_links
 
     def restructure(self):
         raise NotImplementedError

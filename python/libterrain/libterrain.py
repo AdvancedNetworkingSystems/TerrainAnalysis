@@ -20,13 +20,58 @@ class ST_MakeEnvelope(GenericFunction):
     type = Geometry
 
 
+def _profile_osm(tcp, b1, b2, srid, lidar_table, buff, ple=2, h1=2, h2=2):
+    p1 = b1.coords().wkt
+    p2 = b1.coords().wkt
+    conn = tcp.getconn()
+    cur = conn.cursor()
+    cur.execute("""WITH buffer AS(
+                            SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
+                        ),
+                        lidar AS(
+                            WITH
+                            patches AS (
+                            SELECT pa FROM {1}
+                            JOIN buffer ON PC_Intersects(pa, line)
+                            ),
+                            pa_pts AS (
+                            SELECT PC_Explode(pa) AS pts FROM patches
+                            ),
+                            building_pts AS (
+                            SELECT pts, line FROM pa_pts JOIN buffer
+                            ON ST_Intersects(line, pts::geometry)
+                            )
+                            SELECT
+                            PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, ST_GeomFromText('{2}', {0}), true) as distance
+                            FROM building_pts
+                            )
+                        SELECT DISTINCT on (lidar.distance)
+                        lidar.distance,
+                        lidar.z
+                        FROM lidar ORDER BY lidar.distance;
+                    """.format(srid, lidar_table, p1, p2, buff))
+    q_result = cur.fetchall()
+    if cur.rowcount == 0:
+        raise ProfileException("No profile")
+    # remove invalid points
+    profile = filter(lambda a: a[0] != -9999, q_result)
+    # cast everything to float
+    d, y = zip(*profile)
+    y = [float(i) for i in y]
+    d = [float(i) for i in d]
+    profile = list(zip(d, y))
+    print(profile)
+    link = Link(profile, p1, p2, h1, h2, ple=ple)
+    return link
+
+
 class terrain():
     def __init__(self, DSN, dataset, ple, processes=1):
         self.DSN = DSN
         self.dataset = dataset
         self.ple = ple
         # Connection to PSQL
-        self.tcp = ThreadedConnectionPool(1, processes, DSN)
+        self.tcp = PersistentConnectionPool(1, processes, DSN)
         engine = create_engine(DSN, client_encoding='utf8', echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
@@ -60,47 +105,6 @@ class terrain():
             '0229': Campeggio/ Villaggio
         """
         self.codici = codici
-
-    def _profile_osm(self, p1, p2):
-        conn = self.tcp.getconn()
-        cur = self.conn.cursor()
-        cur.execute("""WITH buffer AS(
-                                SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
-                            ),
-                            lidar AS(
-                                WITH
-                                patches AS (
-                                SELECT pa FROM {1}
-                                JOIN buffer ON PC_Intersects(pa, line)
-                                ),
-                                pa_pts AS (
-                                SELECT PC_Explode(pa) AS pts FROM patches
-                                ),
-                                building_pts AS (
-                                SELECT pts, line FROM pa_pts JOIN buffer
-                                ON ST_Intersects(line, pts::geometry)
-                                )
-                                SELECT
-                                PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, ST_GeomFromText('{2}', {0}), true) as distance
-                                FROM building_pts
-                                )
-                            SELECT DISTINCT on (lidar.distance)
-                            lidar.distance,
-                            lidar.z
-                            FROM lidar ORDER BY lidar.distance;
-                        """.format(self.srid, self.lidar_table, p1, p2, self.buff))
-        q_result = cur.fetchall()
-        if cur.rowcount == 0:
-            raise ProfileException("No profile")
-        # remove invalid points
-        profile = filter(lambda a: a[0] != -9999, q_result)
-        # cast everything to float
-        d, y = zip(*profile)
-        y = [float(i) for i in y]
-        d = [float(i) for i in d]
-        profile = list(zip(d, y))
-        return profile
-
     def _set_dataset(self):
         self.lidar_table = 'lidar_toscana'
         self.buff = 0.5  # 1 point per metre
@@ -126,24 +130,31 @@ class terrain():
         #     self.working_area = [10.9165, 43.8987, 11.0816, 43.7995]
         #     self.building_class = Building_OSM
 
-    def get_loss(self, b1, b2, h1=2, h2=2):
-        """Calculate the path loss between two buildings_pair
-        b1: source Building object
-        b2: destination Building object
+    def get_link_parallel(self, b1_list, b2_list, h1=2, h2=2, processes=1):
+        """Calculate the path loss between lists of buildings_pair
+        b1_list: source Building list
+        b2_list: destination Building list
         h1: height of the antenna on the roof of b1
         h2: height of the antenna on the roof of b2
         """
-        p1 = b1.coords().wkt
-        p2 = b2.coords().wkt
-        try:
-            profile = self._profile_osm(p1, p2)
-            link = Link(profile, h1, h2, self.ple, p1=b1.coords(), p2=b2.coords())
-            # fig = plt.figure()
-            # link.plot(fig, pltid=221, text="prova")
-            # plt.show()
-        except (ZeroDivisionError, ProfileException) as e:
-            return -1
-        return link.loss
+
+        params = [{'tcp': self.tcp, 'b1': b1_list[i],
+                   'b2': b2_list[i],
+                   'srid': self.srid, 'lidar_table': self.lidar_table,
+                   'buff': self.buff} for i in len(b1_list)]
+        links = pool.map(_profile_osm, params)
+        #try:
+        #    #profile = _profile_osm(self.tcp, p1, p2, self.srid, self.lidar_table, self.buff)
+        #    # fig = plt.figure()
+        #    # link.plot(fig, pltid=221, text="prova")
+        #    # plt.show()
+        #except (ZeroDivisionError, ProfileException) as e:
+        #    return -1 # FIXME what is this exception catching?
+        return [l.loss for l in links]
+
+
+    def get_loss(self, b1, b2, h1=2, h2=2):
+        return self.get_link(b1, b2, h1, h2).loss
 
     def get_link(self, b1, b2, h1=2, h2=2):
         """Calculate the path loss between two buildings_pair
@@ -152,10 +163,8 @@ class terrain():
         h1: height of the antenna on the roof of b1
         h2: height of the antenna on the roof of b2
         """
-        p1 = b1.coords().wkt
-        p2 = b2.coords().wkt
         try:
-            profile = self._profile_osm(p1, p2)
+            profile = _profile_osm(self.tcp, b1, b2, self.srid, self.lidar_table, self.buff)
             link = Link(profile, h1=h1, h2=h2, ple=self.ple, p1=b1.coords(), p2=b2.coords())
             # fig = plt.figure()
             # link.plot(fig, pltid=221, text="prova")
@@ -163,7 +172,6 @@ class terrain():
         except (ZeroDivisionError, ProfileException) as e:
             return None
         return link
-
 
     def get_building_gid(self, gid):
         return self.building_class.get_building_gid(self.session, gid)
