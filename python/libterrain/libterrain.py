@@ -9,6 +9,7 @@ from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 
 import matplotlib.pyplot as plt
+from multiprocessing import Pool
 
 from libterrain.link import Link, ProfileException
 from libterrain.building import Building_CTR, Building_OSM
@@ -129,17 +130,22 @@ class terrain():
         """
         return self.get_link(b1, b2, h1, h2).loss
 
-    def get_link_parallel(self, b1_list, b2_list, h1=2, h2=2):
+    def get_link_parallel(self, b1_list, b2_list, h1=2, h2=2, processes=1):
         """Calculate the path loss between two lists of building
         """
-        try:
-            profile = _profile_osm(b1, b2, self.pcp, self.srid, self.lidar_table, self.buff)
-            # fig = plt.figure()
-            # link.plot(fig, pltid=221, text="prova")
-            # plt.show()
-        except (ZeroDivisionError, ProfileException) as e:
-            return None
-        return link
+        params = [{'b1': b1_list[i], 'b2': b2_list[i], 'pcp': self.pcp,
+                   'srid': self.srid, 'lidar_table': self.lidar_table,
+                   'buff': self.buff} for i in range(len(b1_list))]
+        pool = Pool(processes)
+        links = pool.map(_profile_osm, params)
+        #try:
+        #    profile = _profile_osm(b1, b2, self.pcp, self.srid, self.lidar_table, self.buff)
+        #    # fig = plt.figure()
+        #    # link.plot(fig, pltid=221, text="prova")
+        #    # plt.show()
+        #except (ZeroDivisionError, ProfileException) as e:
+        #    return None
+        return links
 
 
     def get_link(self, b1, b2, h1=2, h2=2):

@@ -126,10 +126,18 @@ class CN_Generator():
 
     def check_connectivity(self, set_nodes, new_node):
         visible_links = []
-        for i in set_nodes:
-            link = self.check_link(source=new_node, destination=i)
-            if link:
+        links = self.t.get_link_parallel(set_nodes, [new_node]*len(set_nodes),
+                                         self.P)
+        for phy_link in links:
+            if phy_link and phy_link.loss > 0:
+                link = {}
+                link['src'] = source
+                link['dst'] = destination
+                link['loss'] = phy_link.loss
+                link['src_orient'] = phy_link.Aorient
+                link['dst_orient'] = phy_link.Borient
                 visible_links.append(link)
+
         return visible_links
 
     def restructure(self):
