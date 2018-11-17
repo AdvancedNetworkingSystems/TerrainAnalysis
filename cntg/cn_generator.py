@@ -45,10 +45,13 @@ class CN_Generator():
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  " defaults to buildings at 30km", type=float,
                                  default=30000)
+        self.parser.add_argument('-r', help="random seed,", type=int,
+                                 default=1)
         self.args = self.parser.parse_args(unk_args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        random.seed(self.args.r)
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
         if not DSN:
