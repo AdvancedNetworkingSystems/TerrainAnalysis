@@ -2,6 +2,8 @@ import networkx as nx
 from antenna import Antenna
 import ubiquiti as ubnt
 import code
+import numpy
+
 node_fixed_cost = 200
 
 
@@ -171,12 +173,18 @@ class Network():
             print(d, b)
             if not b:
                 disconnected_nodes += 1
-        metrics["connected_nodes"] = 1 + len(min_bandwidth) - disconnected_nodes
+        metrics["connected_nodes"] = 1 + len(min_bandwidth) -\
+                                       disconnected_nodes
         metrics["unconnected_ratio"] = disconnected_nodes / \
                                        (1 + len(min_bandwidth))
         metrics["price_per_user"] = self.cost/metrics['connected_nodes']
         metrics["price_per_mbyte"] = 8*metrics['price_per_user'] * \
-                                    sum([1/x for x in min_bandwidth.values()
+                                     sum([1/x for x in min_bandwidth.values()
                                          if x])/metrics['connected_nodes']
         metrics["cut_points"] = 1/self.compute_equivalent_connectivity()
+        # more useful metrics
+        metrics["avg_link_per_antenna"] = numpy.mean([d['link_per_antenna']
+                                                     for _, _, d in
+                                                     self.graph.edges(
+                                                     data=True)])
         return metrics
