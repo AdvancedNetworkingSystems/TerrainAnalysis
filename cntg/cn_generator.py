@@ -79,7 +79,10 @@ class CN_Generator():
 
     def get_random_node(self):
         random.seed(self.random_seed)
-        new_node = random.sample(self.susceptible, 1)[0]
+        self.random_seed += self.random_seed**2
+        #must cast into list and order because sample on set is unpredictable
+        susceptible_tmp = sorted(list(self.susceptible), key=lambda x:x.gid)
+        new_node = random.sample(susceptible_tmp, 1)[0]
         self.susceptible.remove(new_node)
         return new_node
 
