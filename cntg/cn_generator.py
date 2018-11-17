@@ -51,7 +51,7 @@ class CN_Generator():
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
-        random.seed(self.args.r)
+        self.random_seed = self.args.r
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
         if not DSN:
@@ -78,6 +78,7 @@ class CN_Generator():
         return buildings[0]
 
     def get_random_node(self):
+        random.seed(self.random_seed)
         new_node = random.sample(self.susceptible, 1)[0]
         self.susceptible.remove(new_node)
         return new_node
