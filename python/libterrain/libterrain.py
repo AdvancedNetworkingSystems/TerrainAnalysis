@@ -15,9 +15,11 @@ from libterrain.building import Building_CTR, Building_OSM
 from libterrain.comune import Comune
 
 
-def _profile_osm(p1, p2, pcp, srid, lidar_table, buff):
+def _profile_osm(b1, b2, pcp, srid, lidar_table, buff, h1, h2, ple):
     con = pcp.getconn()
     cur = con.cursor()
+    p1 = b1.coords().wkt
+    p2 = b2.coords().wkt
     cur.execute("""WITH buffer AS(
                             SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
                         ),
@@ -53,7 +55,8 @@ def _profile_osm(p1, p2, pcp, srid, lidar_table, buff):
     y = [float(i) for i in y]
     d = [float(i) for i in d]
     profile = list(zip(d, y))
-    return profile
+    link = Link(profile, b1.coords(), b2.coords(), h1, h2, ple)
+    return link
 
 
 class ST_MakeEnvelope(GenericFunction):
@@ -126,6 +129,19 @@ class terrain():
         """
         return self.get_link(b1, b2, h1, h2).loss
 
+    def get_link_parallel(self, b1_list, b2_list, h1=2, h2=2):
+        """Calculate the path loss between two lists of building
+        """
+        try:
+            profile = _profile_osm(b1, b2, self.pcp, self.srid, self.lidar_table, self.buff)
+            # fig = plt.figure()
+            # link.plot(fig, pltid=221, text="prova")
+            # plt.show()
+        except (ZeroDivisionError, ProfileException) as e:
+            return None
+        return link
+
+
     def get_link(self, b1, b2, h1=2, h2=2):
         """Calculate the path loss between two buildings_pair
         b1: source Building object
@@ -133,14 +149,10 @@ class terrain():
         h1: height of the antenna on the roof of b1
         h2: height of the antenna on the roof of b2
         """
-        p1 = b1.coords().wkt
-        p2 = b2.coords().wkt
         try:
-            profile = _profile_osm(p1, p2, self.pcp, self.srid, self.lidar_table, self.buff)
-            link = Link(profile, h1=h1, h2=h2, ple=self.ple, p1=b1.coords(), p2=b2.coords())
-            # fig = plt.figure()
-            # link.plot(fig, pltid=221, text="prova")
-            # plt.show()
+            link = _profile_osm(b1, b2, self.pcp, self.srid,
+                                self.lidar_table, self.buff,
+                                h1, h2, self.ple)
         except (ZeroDivisionError, ProfileException) as e:
             return None
         return link
