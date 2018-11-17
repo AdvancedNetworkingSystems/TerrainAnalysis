@@ -34,7 +34,7 @@ class Growing_network(CN_Generator):
     def add_links(self, new_node):
         visible_links = self.check_connectivity(self.infected, new_node)
         # if there's at least one vaild link add the node to the network
-        print("testing new node")
+        print("testing node")
         event = 0
         if visible_links:
             visible_links.sort(key=lambda x: x['loss'], reverse=True)

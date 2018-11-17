@@ -22,16 +22,16 @@ class Link:
         self.h2 = h2
         if profile is None or len(profile) < 2:
             raise ProfileException("No profile")
-        d, y = zip(*profile)
+        d, z = zip(*profile)
         if not all(x < y for x, y in zip(d, d[1:])):
             raise ProfileException("Not monotonic list")
         self.d = copy.deepcopy(list(d))
-        self.y = copy.deepcopy(list(y))
-        self.A = Point(d[0], y[0] + h1)
-        self.B = Point(d[-1], y[-1] + h2)
+        self.z = copy.deepcopy(list(z))
+        self.A = Point(d[0], z[0] + h1)
+        self.B = Point(d[-1], z[-1] + h2)
         self.Borient = (0, 0)
-        self.pA = [p1.x, p1.y, y[0] + h1]
-        self.pB = [p2.x, p2.y, y[-1] + h2]
+        self.pA = [p1.x, p1.y, z[0] + h1]
+        self.pB = [p2.x, p2.y, z[-1] + h2]
         self.distance = self.A.distance(self.B)
         self.Aorient = self._calc_angles(self.pA, self.pB)
         self.Borient = self._calc_angles(self.pB, self.pA)
@@ -50,32 +50,32 @@ class Link:
         n_points = len(self.d)
         y_curved = [None] * n_points
         for i in range(n_points):
-            y_curved[i] = self.y[i] - (math.sqrt(self.d[i]**2 + self.R**2) - self.R)
+            y_curved[i] = self.z[i] - (math.sqrt(self.d[i]**2 + self.R**2) - self.R)
         # update point after curvature
-        self.B = Point(self.d[-1], self.y[-1] + self.h2)
+        self.B = Point(self.d[-1], self.z[-1] + self.h2)
         self.distance = self.A.distance(self.B)
-        self.y = y_curved
+        self.z = y_curved
 
     def _downscale(self, downscale):
         # keep 1 on n points
-        old_profile = zip(self.d, self.y)
+        old_profile = zip(self.d, self.z)
         profile = []
         for i in range(len(old_profile)):
             if i % downscale == 0:
                 profile.append(choice(old_profile[i:i + downscale]))
-        self.d, self.y = zip(*profile)
-        self.y = list(self.y)
+        self.d, self.z = zip(*profile)
+        self.z = list(self.z)
         self.d = list(self.d)
 
     def _polygonize(self):
-        min_y = min(self.y) - 10
-        self.y.insert(0, min_y)
+        min_y = min(self.z) - 10
+        self.z.insert(0, min_y)
         self.d.insert(0, self.d[0])
-        self.y.append(min_y)
+        self.z.append(min_y)
         self.d.append(self.d[-1])
-        self.y.append(self.y[0])
+        self.z.append(self.z[0])
         self.d.append(self.d[0])
-        self.terrain = Polygon(zip(self.d, self.y))
+        self.terrain = Polygon(zip(self.d, self.z))
 
     def _fresnel(self, clearance=False):
         f1 = math.sqrt(self.l * self.distance / 4)
@@ -143,7 +143,7 @@ class Link:
 
     def plot(self, figure, pltid, text):
         ax = figure.add_subplot(pltid)
-        ax.plot(self.d, self.y, label="Terrain profile")
+        ax.plot(self.d, self.z, label="Terrain profile")
         ax.plot((self.A.x, self.B.x), (self.A.y, self.B.y), 'ro', label="Antennas")
         f_x, f_y = self.F.exterior.xy
         ax.plot(f_x, f_y, label='First fresnel zone')

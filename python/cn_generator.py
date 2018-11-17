@@ -100,28 +100,31 @@ class CN_Generator():
     def add_links(self, new_node):
         raise NotImplementedError
 
-    def check_link(self, source, destination):
-        phy_link = self.t.get_link(source, destination, h1=2, h2=2)
-        if phy_link and phy_link.loss > 0:
-            link = {}
-            link['src'] = source
-            link['dst'] = destination
-            link['loss'] = phy_link.loss
-            link['src_orient'] = phy_link.Aorient
-            link['dst_orient'] = phy_link.Borient
-            return link
+    # def check_link(self, source, destination):
+    #     phy_link = self.t.get_link(source, destination, h1=2, h2=2)
+    #     if phy_link and phy_link.loss > 0:
+    #         link = {}
+    #         link['src'] = source
+    #         link['dst'] = destination
+    #         link['loss'] = phy_link.loss
+    #         link['src_orient'] = phy_link.Aorient
+    #         link['dst_orient'] = phy_link.Borient
+    #         return link
 
     def check_connectivity(self, set_nodes, new_node):
-        visible_links = []
-        for i in set_nodes:
-            link = self.check_link(source=new_node, destination=i)
-            if link:
-                visible_links.append(link)
+        if len(set_nodes) == 0:
+            return []
+        links = self.t.get_links(b1=new_node, set_b=set_nodes)
+        return links
+        # for i in set_nodes:
+        #     link = self.check_link(source=new_node, destination=i)
+        #     if link:
+        #         visible_links.append(link)
         # with Pool(5) as p:
         #   TODO: fix client mutlithreading
         #   self.new_node = new_node
         #   visible_links = list(set(p.map(self.check_link, self.infected)) - None)
-        return visible_links
+        # return visible_links
 
     def restructure(self):
         raise NotImplementedError
