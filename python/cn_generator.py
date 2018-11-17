@@ -36,6 +36,8 @@ class CN_Generator():
         self.susceptible = set()
         self.net = network.Network()
         self.parser = argparse.ArgumentParser()
+        self.parser.add_argument("-P", help="number of parallel processes",
+                                 default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
         self.parser.add_argument('-b',
@@ -49,6 +51,7 @@ class CN_Generator():
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        self.P = self.args.P
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
         if not DSN:
