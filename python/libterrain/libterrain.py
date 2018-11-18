@@ -9,16 +9,27 @@ from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
 
 import matplotlib.pyplot as plt
-from multiprocessing import Pool
-
+import multiprocessing as mp
+from more_itertools import chunked
 from libterrain.link import Link, ProfileException
 from libterrain.building import Building_CTR, Building_OSM
 from libterrain.comune import Comune
 
 
-def _profile_osm(b1, b2, pcp, srid, lidar_table, buff, h1, h2, ple):
-    con = pcp.getconn()
+def _profile_osm(param_dict, con):
+    print(param_dict)
+    print(con)
+    param_dict = param_dict[0] #workaround must remove
+    b1 = param_dict['b1']
+    b2 = param_dict['b2']
+    srid = param_dict['srid']
+    lidar_table = param_dict['lidar_table']
+    buff = param_dict['buff']
+    h1 = param_dict['h1']
+    h2 = param_dict['h2']
     cur = con.cursor()
+    print(con)
+    print(cur)
     p1 = b1.coords().wkt
     p2 = b2.coords().wkt
     cur.execute("""WITH buffer AS(
@@ -56,9 +67,9 @@ def _profile_osm(b1, b2, pcp, srid, lidar_table, buff, h1, h2, ple):
     y = [float(i) for i in y]
     d = [float(i) for i in d]
     profile = list(zip(d, y))
-    link = Link(profile, b1.coords(), b2.coords(), h1, h2, ple)
-    con.putconn()
-    return link
+    link = Link(profile, b1.coords(), b2.coords(), h1, h2)
+    print(link.loss)
+    #return link
 
 
 class ST_MakeEnvelope(GenericFunction):
@@ -72,7 +83,7 @@ class terrain():
         self.dataset = dataset
         self.ple = ple
         # Connection to PSQL
-        self.pcp = ThreadedConnectionPool(1, 100, DSN)
+        self.tcp = ThreadedConnectionPool(1, 100, DSN)
         engine = create_engine(DSN, client_encoding='utf8', echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
@@ -134,19 +145,37 @@ class terrain():
     def get_link_parallel(self, b1_list, b2_list, h1=2, h2=2, processes=1):
         """Calculate the path loss between two lists of building
         """
-        params = [{'b1': b1_list[i], 'b2': b2_list[i], 'pcp': self.pcp,
-                   'srid': self.srid, 'lidar_table': self.lidar_table,
-                   'buff': self.buff} for i in range(len(b1_list))]
-        pool = Pool(processes)
-        links = pool.map(_profile_osm, params)
-        #try:
-        #    profile = _profile_osm(b1, b2, self.pcp, self.srid, self.lidar_table, self.buff)
+        self.querier = []
+        params = [{'b1': b1_list[i],
+                   'b2': b2_list[i],
+                   'srid': self.srid,
+                   'lidar_table': self.lidar_table,
+                   'buff': self.buff,
+                   'h1': h1,
+                   'h2': h2
+                   }for i in range(len(b1_list))]
+        conns = [self.tcp.getconn() for i in range(processes)]
+        chunk_size = int(len(params) / processes)
+        chunks = list(chunked(params, chunk_size))
+        for i in range(processes):
+            t = mp.Process(target=_profile_osm, args=[chunks[i], conns[i]])
+            self.querier.append(t)
+            t.daemon = True
+            t.start()
+            for i in range(processes):
+                self.querier[i].join()
+                self.tcp.putconn(conns[i], close=True)
+        # pool = Pool(processes)
+        # links = pool.map(_profile_osm, params)
+        # #try:
+        #    profile = _profile_osm(b1, b2, self.tcp, self.srid, self.lidar_table, self.buff)
         #    # fig = plt.figure()
         #    # link.plot(fig, pltid=221, text="prova")
         #    # plt.show()
         #except (ZeroDivisionError, ProfileException) as e:
         #    return None
-        return links
+        input("Stop me")
+        return []
 
 
     def get_link(self, b1, b2, h1=2, h2=2):
@@ -157,7 +186,7 @@ class terrain():
         h2: height of the antenna on the roof of b2
         """
         try:
-            link = _profile_osm(b1, b2, self.pcp, self.srid,
+            link = _profile_osm(b1, b2, self.tcp, self.srid,
                                 self.lidar_table, self.buff,
                                 h1, h2, self.ple)
         except (ZeroDivisionError, ProfileException) as e:
