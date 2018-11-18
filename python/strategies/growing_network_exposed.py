@@ -6,7 +6,6 @@ from misc import Susceptible_Buffer
 import argparse
 import time
 import ubiquiti as ubnt
-from edgeffect import edgeffect
 import networkx as nx
 
 

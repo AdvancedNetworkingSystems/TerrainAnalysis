@@ -14,7 +14,8 @@ import network
 import folium
 from folium import plugins
 import ubiquiti as ubnt
-from edgeffect import edgeffect
+from edgeffect import EdgeEffect
+import multiprocessing as mp
 
 
 def poor_mans_color_gamma(bitrate):
@@ -130,32 +131,27 @@ class CN_Generator():
 
     def restructure(self):
         raise NotImplementedError
-
-    def restructure_edgeeffect(self):
+    
+    def restructure_edgeeffect_mt(self):
         # run only every 10 nodes added
         if self.net.size() % 5 != 0:
             return
-        # for each link that we found is feasible, but we havent added compute
-        # the edge effect
-        for l in self.feasible_links:
-            # we do it only for the link between nodes of the main connected
-            # component
-            if not (l['src'].gid in self.net.main_sg() and l['dst'].gid in
-                    self.net.main_sg()):
-                l['effect'] = 0
-                continue
-            edge = {}
-            edge[0] = l['src'].gid
-            edge[1] = l['dst'].gid
-            edge['weight'] = 1  # For now do not use costs
-            l['effect'] = edgeffect(self.net.main_sg(), edge)
+        ee = EdgeEffect(self.net.graph, self.net.main_sg())
+        p = Pool(self.P)
+        effect_edges = p.map(ee.restructure_edgeeffect, self.feasible_links)
+        #print(effect_edges)
         # We could just pick up the maximum, but if the link is not negotiable
         # then we should do it again and again so we order them and we pop them
         # untill the first one connect
-        self.feasible_links.sort(key=lambda x: x['effect'])
+        effect_edges.sort(key=lambda x: x['effect'])
         # Try to connect the best link (try again till it gets connected)
-        while(self.feasible_links):
-            if self.add_link(self.feasible_links.pop()):
+        while(effect_edges):
+            selected_edge = effect_edges.pop()
+            link = [link for link in self.feasible_links
+                    if link['src'].gid == selected_edge[0] and
+                    link['dst'].gid == selected_edge[1]
+                    ]
+            if self.add_link(link[0]):
                 print("Added one edge")
                 return
 

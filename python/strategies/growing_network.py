@@ -29,7 +29,7 @@ class Growing_network(CN_Generator):
         return self.get_random_node()
 
     def restructure(self):
-        return self.restructure_edgeeffect()
+        return self.restructure_edgeeffect_mt()
 
     def add_links(self, new_node):
         visible_links = [link for link in self.check_connectivity(self.infected, new_node) if link]

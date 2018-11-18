@@ -36,7 +36,7 @@ class terrain():
         self._set_dataset()
         self.workers_query_order_q = mp.Queue()
         self.workers_query_result_q = mp.Queue()
-        self.processes=processes
+        self.processes = processes
         self.conns = [self.tcp.getconn() for i in range(processes)]
         for i in range(self.processes):
             t = mp.Process(target=self.querty_worker, args=[self.conns[i]])
@@ -189,7 +189,7 @@ class terrain():
                         """.format(srid, lidar_table, p1, p2, buff))
         q_result = cur.fetchall()
         if cur.rowcount == 0:
-            raise ProfileException("No profile")
+            return None
         # remove invalid points
         profile = filter(lambda a: a[0] != -9999, q_result)
         # cast everything to float
