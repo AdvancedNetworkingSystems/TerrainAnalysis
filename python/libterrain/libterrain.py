@@ -7,8 +7,6 @@ from geoalchemy2.functions import GenericFunction
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
-
-import matplotlib.pyplot as plt
 import multiprocessing as mp
 from more_itertools import chunked
 from libterrain.link import Link, ProfileException
@@ -225,7 +223,6 @@ class terrain():
     #     except (ZeroDivisionError, ProfileException) as e:
     #         return None
     #     return link
-
 
     def get_building_gid(self, gid):
         return self.building_class.get_building_gid(self.session, gid)

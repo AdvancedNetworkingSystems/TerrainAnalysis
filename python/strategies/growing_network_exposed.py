@@ -1,6 +1,5 @@
 from multiprocessing import Pool
 import random
-import matplotlib.pyplot as plt
 from strategies.growing_network import Growing_network
 from misc import Susceptible_Buffer
 import argparse
