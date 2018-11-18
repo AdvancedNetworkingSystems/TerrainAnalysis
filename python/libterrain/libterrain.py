@@ -1,7 +1,7 @@
 import random
 import shapely
 from sqlalchemy import create_engine, and_
-from psycopg2.pool import PersistentConnectionPool
+from psycopg2.pool import PersistentConnectionPool, ThreadedConnectionPool
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2.functions import GenericFunction
 from geoalchemy2 import Geometry
@@ -57,6 +57,7 @@ def _profile_osm(b1, b2, pcp, srid, lidar_table, buff, h1, h2, ple):
     d = [float(i) for i in d]
     profile = list(zip(d, y))
     link = Link(profile, b1.coords(), b2.coords(), h1, h2, ple)
+    con.putconn()
     return link
 
 
@@ -71,7 +72,7 @@ class terrain():
         self.dataset = dataset
         self.ple = ple
         # Connection to PSQL
-        self.pcp = PersistentConnectionPool(1, 100, DSN)
+        self.pcp = ThreadedConnectionPool(1, 100, DSN)
         engine = create_engine(DSN, client_encoding='utf8', echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
