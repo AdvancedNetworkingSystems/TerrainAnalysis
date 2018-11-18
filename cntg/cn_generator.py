@@ -8,7 +8,6 @@ import shapely
 import random
 import time
 import networkx as nx
-import matplotlib.pyplot as plt
 import argparse
 import network
 import folium
@@ -47,10 +46,13 @@ class CN_Generator():
                                  default=30000)
         self.parser.add_argument('-r', help="random seed,", type=int,
                                  default=1)
+        self.parser.add_argument('-B', help="min bandwidth per node (in Mbps)", type=float,
+                                 default=1)
         self.args = self.parser.parse_args(unk_args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
+        self.B = self.args.B
         self.random_seed = self.args.r
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
@@ -103,8 +105,9 @@ class CN_Generator():
     def stop_condition_maxnodes(self):
         return len(self.infected) > self.n
 
-    def stop_condition_minbw(self, bw=1):
+    def stop_condition_minbw(self):
         # recompute minimum bw at each node
+        bw = self.B
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
         for n in self.net.graph.nodes():

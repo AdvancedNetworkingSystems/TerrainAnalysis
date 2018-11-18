@@ -7,9 +7,6 @@ from geoalchemy2.functions import GenericFunction
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
 from shapely.geometry import Point
-
-import matplotlib.pyplot as plt
-
 from libterrain.link import Link, ProfileException
 from libterrain.building import Building_CTR, Building_OSM
 from libterrain.comune import Comune
@@ -138,9 +135,6 @@ class terrain():
         try:
             profile = self._profile_osm(p1, p2)
             link = Link(profile, h1, h2, self.ple, p1=b1.coords(), p2=b2.coords())
-            # fig = plt.figure()
-            # link.plot(fig, pltid=221, text="prova")
-            # plt.show()
         except (ZeroDivisionError, ProfileException) as e:
             return -1
         return link.loss
@@ -157,9 +151,6 @@ class terrain():
         try:
             profile = self._profile_osm(p1, p2)
             link = Link(profile, h1=h1, h2=h2, ple=self.ple, p1=b1.coords(), p2=b2.coords())
-            # fig = plt.figure()
-            # link.plot(fig, pltid=221, text="prova")
-            # plt.show()
         except (ZeroDivisionError, ProfileException) as e:
             return None
         return link
