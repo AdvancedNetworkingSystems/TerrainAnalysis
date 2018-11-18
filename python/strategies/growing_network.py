@@ -32,9 +32,10 @@ class Growing_network(CN_Generator):
         return self.restructure_edgeeffect()
 
     def add_links(self, new_node):
-        visible_links = self.check_connectivity(self.infected, new_node)
+        visible_links = [link for link in self.check_connectivity(self.infected, new_node) if link]
+        
         # if there's at least one vaild link add the node to the network
-        print("testing new node")
+        #print("trying to connect new node %d to %s"%(new_node.gid, self.infected))
         event = 0
         if visible_links:
             visible_links.sort(key=lambda x: x['loss'], reverse=True)

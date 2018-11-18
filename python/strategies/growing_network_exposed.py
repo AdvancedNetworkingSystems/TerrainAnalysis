@@ -20,9 +20,8 @@ class Growing_network_exposed(Growing_network):
         return len(self.infected) >= self.n
 
     def add_links(self, new_node):
-        visible_links_infected = self.check_connectivity(self.infected,
-                                                         new_node)
-        visible_links_exposed = self.check_connectivity(self.exposed, new_node)
+        visible_links_infected = [link for link in self.check_connectivity(self.infected, new_node) if link]
+        visible_links_infected = [link for link in self.check_connectivity(self.exposed, new_node) if link]
         self.add_node(new_node)
         node_added = False
         # FIXME: there is a bug involving infected. sometimes there are more nodes in the graph than infected

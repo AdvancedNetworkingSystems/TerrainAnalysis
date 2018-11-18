@@ -55,9 +55,9 @@ class CN_Generator():
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
         if not DSN:
-            self.t = terrain(self.DSN, dataset, ple=2.4)
+            self.t = terrain(self.DSN, dataset, ple=2.4, processes=self.P)
         else:
-            self.t = terrain(DSN, dataset, ple=2.4)
+            self.t = terrain(DSN, dataset, ple=2.4, processes=self.P)
         self.event_counter = 0
         ubnt.load_devices()
 
@@ -113,32 +113,20 @@ class CN_Generator():
     def add_links(self, new_node):
         raise NotImplementedError
 
-    def check_link(self, source, destination):
-        phy_link = self.t.get_link(source, destination, h1=2, h2=2)
-        if phy_link and phy_link.loss > 0:
-            link = {}
-            link['src'] = source
-            link['dst'] = destination
-            link['loss'] = phy_link.loss
-            link['src_orient'] = phy_link.Aorient
-            link['dst_orient'] = phy_link.Borient
-            return link
+    # def check_link(self, source, destination):
+    #     phy_link = self.t.get_link(source, destination, h1=2, h2=2)
+    #     if phy_link and phy_link.loss > 0:
+    #         link = {}
+    #         link['src'] = source
+    #         link['dst'] = destination
+    #         link['loss'] = phy_link.loss
+    #         link['src_orient'] = phy_link.Aorient
+    #         link['dst_orient'] = phy_link.Borient
+    #         return link
 
     def check_connectivity(self, set_nodes, new_node):
-        visible_links = []
-        links = self.t.get_link_parallel(set_nodes, [new_node]*len(set_nodes),
-                                         self.P)
-        for phy_link in links:
-            if phy_link and phy_link.loss > 0:
-                link = {}
-                link['src'] = source
-                link['dst'] = destination
-                link['loss'] = phy_link.loss
-                link['src_orient'] = phy_link.Aorient
-                link['dst_orient'] = phy_link.Borient
-                visible_links.append(link)
-
-        return visible_links
+        links = self.t.get_link_parallel(source_b=new_node, dst_b_list=set_nodes)
+        return links
 
     def restructure(self):
         raise NotImplementedError
