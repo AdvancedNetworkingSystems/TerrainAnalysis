@@ -297,7 +297,6 @@ class CN_Generator():
             killtree(pid)
             pass
         # save result
-        print("F")
         min_b = self.net.compute_minimum_bandwidth()
         for k, v in self.net.compute_metrics().items():
             print(k, v)
