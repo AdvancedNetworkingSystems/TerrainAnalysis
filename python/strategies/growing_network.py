@@ -27,11 +27,8 @@ class Growing_network(CN_Generator):
     def get_newnode(self):
         return self.get_random_node()
 
-    def restructure(self, rounds=10):
-        # run only every 10 nodes added
-        if self.net.size() % rounds != 0:
-            self.restructure_edgeeffect_mt()
-        return
+    def restructure(self):
+        return self.restructure_edgeeffect_mt()
 
     def add_links(self, new_node):
         visible_links = [link for link in self.check_connectivity(self.infected, new_node) if link]

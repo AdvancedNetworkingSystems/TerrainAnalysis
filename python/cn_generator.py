@@ -36,6 +36,7 @@ class CN_Generator():
         self.round = 0
         self.infected = []
         self.susceptible = set()
+        self.pool = None
         self.net = network.Network()
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-P", help="number of parallel processes",
@@ -53,12 +54,16 @@ class CN_Generator():
                                  default=1)
         self.parser.add_argument('-B', help="min bandwidth per node (in Mbps)", type=float,
                                  default=1)
+        self.parser.add_argument('-R', help="restructure with edgeffect every r"
+                " rounds, adding l links. Accepts two arguments: r l", 
+                                 nargs=2, type=int)
         self.args = self.parser.parse_args(unk_args)
         self.n = self.args.n
         self.e = self.args.e
         self.b = self.args.b
         self.P = self.args.P
         self.B = self.args.B
+        self.R = self.args.R
         self.random_seed = self.args.r
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
@@ -140,10 +145,17 @@ class CN_Generator():
     def restructure(self):
         raise NotImplementedError
     
-    def restructure_edgeeffect_mt(self):
+    def restructure_edgeeffect_mt(self, num_links=1):
+        # run only every self.args.R[0] nodes added
+        if not self.args.R or self.net.size() % rounds != 0:
+            return
+
+        num_links = self.R[2]
+        max_links = num_links
         ee = EdgeEffect(self.net.graph, self.net.main_sg())
-        p = Pool(self.P)
-        effect_edges = p.map(ee.restructure_edgeeffect, self.feasible_links)
+        if not self.pool:
+            self.pool = Pool(self.P)
+        effect_edges = self.pool.map(ee.restructure_edgeeffect, self.feasible_links)
         #print(effect_edges)
         # We could just pick up the maximum, but if the link is not negotiable
         # then we should do it again and again so we order them and we pop them
@@ -157,7 +169,10 @@ class CN_Generator():
                     link['dst'].gid == selected_edge[1]
                     ]
             if self.add_link(link[0]):
-                return
+                max_links -= 1
+                if max_links <= 0:
+                    print("Restructured {} links".format(num_links))
+                    return
 
     def add_node(self, node):
         self.event_counter += 1
