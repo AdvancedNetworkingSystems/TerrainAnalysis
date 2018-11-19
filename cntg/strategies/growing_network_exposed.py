@@ -26,7 +26,6 @@ class Growing_network_exposed(Growing_network):
         # FIXME: there is a bug involving infected. sometimes there are more nodes in the graph than infected
         if visible_links_infected:
             visible_links_infected.sort(key=lambda x: x['loss'], reverse=True)
-            print(visible_links_infected)
             link = visible_links_infected.pop()
             if self.add_link(link):
                 # If i can connect to an infected node I'm infected too,
@@ -35,7 +34,6 @@ class Growing_network_exposed(Growing_network):
                 node_added = True
         if visible_links_exposed:
             visible_links_exposed.sort(key=lambda x: x['loss'], reverse=True)
-            print(visible_links_exposed)
             link = visible_links_exposed.pop()
             if self.add_link(link):
                 if link['src'] not in self.infected:
