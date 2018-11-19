@@ -141,9 +141,6 @@ class CN_Generator():
         raise NotImplementedError
     
     def restructure_edgeeffect_mt(self):
-        # run only every 10 nodes added
-        if self.net.size() % 5 != 0:
-            return
         ee = EdgeEffect(self.net.graph, self.net.main_sg())
         p = Pool(self.P)
         effect_edges = p.map(ee.restructure_edgeeffect, self.feasible_links)
@@ -160,7 +157,6 @@ class CN_Generator():
                     link['dst'].gid == selected_edge[1]
                     ]
             if self.add_link(link[0]):
-                print("Added one edge")
                 return
 
     def add_node(self, node):
@@ -301,7 +297,10 @@ class CN_Generator():
 def killtree(pid, including_parent=False):
     parent = psutil.Process(pid)
     for child in parent.children(recursive=True):
-        child.kill()
+        try:
+            child.terminate()
+        except psutil.NoSuchProcess:
+            pass
 
     if including_parent:
         parent.kill()

@@ -21,14 +21,17 @@ class Growing_network(CN_Generator):
 
     def stop_condition(self):
         if self.n:
-            return self.stop_condition_maxnodes()
+            return self.stop_condition_maxnodes() or self.stop_condition_minbw()
         return self.stop_condition_minbw()
 
     def get_newnode(self):
         return self.get_random_node()
 
-    def restructure(self):
-        return self.restructure_edgeeffect_mt()
+    def restructure(self, rounds=10):
+        # run only every 10 nodes added
+        if self.net.size() % rounds != 0:
+            self.restructure_edgeeffect_mt()
+        return
 
     def add_links(self, new_node):
         visible_links = [link for link in self.check_connectivity(self.infected, new_node) if link]
