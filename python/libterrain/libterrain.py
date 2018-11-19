@@ -24,24 +24,25 @@ class terrain():
         self.DSN = DSN
         self.dataset = dataset
         self.ple = ple
+        self.processes = processes
         self.querier = []
+        self.srid = '4326'
         # Connection to PSQL
         self.tcp = ThreadedConnectionPool(1, 100, DSN)
         engine = create_engine(DSN, client_encoding='utf8', echo=False)
         Session = sessionmaker(bind=engine)
         self.session = Session()
-        self.srid = '4326'
         self._set_dataset()
+        # MT Queryier
         self.workers_query_order_q = mp.Queue()
         self.workers_query_result_q = mp.Queue()
-        self.processes = processes
         self.conns = [self.tcp.getconn() for i in range(processes)]
         for i in range(self.processes):
             t = mp.Process(target=self.querty_worker, args=[self.conns[i]])
             self.querier.append(t)
             t.daemon = True
             t.start()
-    
+
     def querty_worker(self, conn):
         while(True):
             order = self.workers_query_order_q.get(block=True)
@@ -112,40 +113,12 @@ class terrain():
                    'h1': h1,
                    'h2': h2
                    }for i in range(len(dst_b_list))]
-        
-        # chunk_size = int(len(params) / self.processes)
-        # if not chunk_size:
-        #     chunk_size = 1
-        # chunks = list(chunked(params, chunk_size))
-        # n_chunks = len(chunks)
-        # if(n_chunks < self.processes):
-        #     processes = n_chunks
-        # for i in range(self.processes):
-        #     t = mp.Process(target=self._profile_osm, args=[chunks[i], self.conns[i]])
-        #     self.querier.append(t)
-        #     t.daemon = True
-        #     t.start()
-        # for i in range(self.processes):
-        #     self.querier[i].join()
+        # add orders in the queue
         for order in params:
             self.workers_query_order_q.put(order)
-        
-        while len(links)<len(dst_b_list):
+        # wait for all the orders to come back
+        while len(links) < len(dst_b_list):
             links.append(self.workers_query_result_q.get(block=True))
-        # #finchè ci sono ordini nella coda degli ordini
-        # while not self.workers_query_order_q.empty():
-        #     #finchè ci sono ordini nella coda de risultati
-        #     while not self.workers_query_result_q.empty():
-        #         
-        # pool = Pool(processes)
-        # links = pool.map(_profile_osm, params)
-        # #try:
-        #    profile = _profile_osm(b1, b2, self.tcp, self.srid, self.lidar_table, self.buff)
-        #    # fig = plt.figure()
-        #    # link.plot(fig, pltid=221, text="prova")
-        #    # plt.show()
-        #except (ZeroDivisionError, ProfileException) as e:
-        #    return None
         return links
 
     def _profile_osm(self, param_dict, con):
@@ -160,24 +133,35 @@ class terrain():
         cur = con.cursor()
         p1 = src.coords().wkt
         p2 = dst.coords().wkt
+        #TODO: use query formatting and not string formatting
         cur.execute("""WITH buffer AS(
-                                SELECT ST_Buffer_Meters(ST_MakeLine(ST_GeomFromText('{2}', {0}), ST_GeomFromText('{3}', {0})), {4}) AS line
+                                SELECT
+                                ST_Buffer_Meters(
+                                    ST_MakeLine(
+                                                ST_GeomFromText('{2}', {0}),
+                                                ST_GeomFromText('{3}', {0})
+                                                ), {4}
+                                ) AS line
                             ),
                             lidar AS(
                                 WITH
                                 patches AS (
-                                SELECT pa FROM {1}
-                                JOIN buffer ON PC_Intersects(pa, line)
+                                    SELECT pa FROM {1}
+                                    JOIN buffer ON PC_Intersects(pa, line)
                                 ),
                                 pa_pts AS (
-                                SELECT PC_Explode(pa) AS pts FROM patches
+                                    SELECT PC_Explode(pa) AS pts FROM patches
                                 ),
                                 building_pts AS (
-                                SELECT pts, line FROM pa_pts JOIN buffer
-                                ON ST_Intersects(line, pts::geometry)
+                                    SELECT pts, line FROM pa_pts JOIN buffer
+                                    ON ST_Intersects(line, pts::geometry)
                                 )
                                 SELECT
-                                PC_Get(pts, 'z') AS z, ST_Distance(pts::geometry, ST_GeomFromText('{2}', {0}), true) as distance
+                                PC_Get(pts, 'z') AS z,
+                                ST_Distance(pts::geometry,
+                                            ST_GeomFromText('{2}', {0}),
+                                            true
+                                            ) as distance
                                 FROM building_pts
                                 )
                             SELECT DISTINCT on (lidar.distance)
@@ -189,6 +173,7 @@ class terrain():
         if cur.rowcount == 0:
             return None
         # remove invalid points
+        # TODO: Maybe DBMS can clean this up
         profile = filter(lambda a: a[0] != -9999, q_result)
         # cast everything to float
         d, y = zip(*profile)
@@ -208,21 +193,6 @@ class terrain():
         except (ZeroDivisionError, ProfileException) as e:
             pass
         return None
-
-    # def get_link(self, b1, b2, h1=2, h2=2):
-    #     """Calculate the path loss between two buildings_pair
-    #     b1: source Building object
-    #     b2: destination Building object
-    #     h1: height of the antenna on the roof of b1
-    #     h2: height of the antenna on the roof of b2
-    #     """
-    #     try:
-    #         link = _profile_osm(b1, b2, self.tcp, self.srid,
-    #                             self.lidar_table, self.buff,
-    #                             h1, h2, self.ple)
-    #     except (ZeroDivisionError, ProfileException) as e:
-    #         return None
-    #     return link
 
     def get_building_gid(self, gid):
         return self.building_class.get_building_gid(self.session, gid)

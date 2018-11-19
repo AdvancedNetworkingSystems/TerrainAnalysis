@@ -127,24 +127,13 @@ class CN_Generator():
     def add_links(self, new_node):
         raise NotImplementedError
 
-    # def check_link(self, source, destination):
-    #     phy_link = self.t.get_link(source, destination, h1=2, h2=2)
-    #     if phy_link and phy_link.loss > 0:
-    #         link = {}
-    #         link['src'] = source
-    #         link['dst'] = destination
-    #         link['loss'] = phy_link.loss
-    #         link['src_orient'] = phy_link.Aorient
-    #         link['dst_orient'] = phy_link.Borient
-    #         return link
-
     def check_connectivity(self, set_nodes, new_node):
         links = self.t.get_link_parallel(source_b=new_node, dst_b_list=set_nodes)
         return links
 
     def restructure(self):
         raise NotImplementedError
-    
+
     def restructure_edgeeffect_mt(self, num_links=1):
         # run only every self.args.R[0] nodes added
         if not self.args.R or self.net.size() % rounds != 0:
@@ -156,10 +145,6 @@ class CN_Generator():
         if not self.pool:
             self.pool = Pool(self.P)
         effect_edges = self.pool.map(ee.restructure_edgeeffect, self.feasible_links)
-        #print(effect_edges)
-        # We could just pick up the maximum, but if the link is not negotiable
-        # then we should do it again and again so we order them and we pop them
-        # untill the first one connect
         effect_edges.sort(key=lambda x: x['effect'])
         # Try to connect the best link (try again till it gets connected)
         while(effect_edges):
@@ -309,6 +294,7 @@ class CN_Generator():
             print("A browsable animated map was saved in " +
                   self.animation_file)
 
+
 def killtree(pid, including_parent=False):
     parent = psutil.Process(pid)
     for child in parent.children(recursive=True):
@@ -319,4 +305,3 @@ def killtree(pid, including_parent=False):
 
     if including_parent:
         parent.kill()
-

@@ -43,14 +43,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    pr = cProfile.Profile()
-    pr.enable()
     ubnt.load_devices()
     args, unknown_args = parse_args()
     s = STRATEGIES.get(args.s)(args=args, unk_args=unknown_args)
     s.main()
-    pr.dump_stats('stats.stats')
-    with open('stats.out', 'wt') as output:
-        stats = Stats('stats.stats', stream=output)
-        stats.sort_stats('cumulative', 'time')
-        stats.print_stats()

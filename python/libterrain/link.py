@@ -139,33 +139,3 @@ class Link:
                 self.status = 3  # F60 obstructed
             self.loss += self._FSPL(self.distance)
         return self.loss, self.status
-
-    def plot(self, figure, pltid, text):
-        pass
-        #ax = figure.add_subplot(pltid)
-        #ax.plot(self.d, self.y, label="Terrain profile")
-        #ax.plot((self.A.x, self.B.x), (self.A.y, self.B.y), 'ro', label="Antennas")
-        #f_x, f_y = self.F.exterior.xy
-        #ax.plot(f_x, f_y, label='First fresnel zone')
-        ## plot 60% of fresnel zone
-        #f_x, f_y = self.F60.exterior.xy
-        #ax.plot(f_x, f_y, label='60% of First fresnel zone')
-        ## # plot LOS line
-        #l_x, l_y = self.LOS.xy
-        #ax.plot(l_x, l_y, label="Line of Sight")
-        #plt.xlabel("distance (m)")
-        #plt.ylabel("height a.s.l. (m)")
-        #plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
-        #ax.set_title(text)
-        #if self.status is 0:
-        #    status_t = "LOS Obstructed"
-        #elif self.status is 1:
-        #    status_t = "LOS Free"
-        #elif self.status is 3:
-        #    status_t = "Fresnel Obstructed"
-        #elif self.status < 0:
-        #    status_t = "Error"
-        #text = "LOSS: %fdB\n" % ((self.loss)) + status_t
-        #props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        #ax.text(0.10, 0.15, text, transform=ax.transAxes, fontsize=10, verticalalignment='top', bbox=props)
-        ## plt.axes().set_aspect('equal')

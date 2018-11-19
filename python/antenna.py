@@ -16,7 +16,7 @@ class Antenna:
     def get_beamwidth_area(self):
         p1 = ((self.orientation[0] + self.beamwidth[0] / 2) % 360, (self.orientation[1] - self.beamwidth[1] / 2) % 360)
         p2 = ((self.orientation[0] - self.beamwidth[0] / 2) % 360, (self.orientation[1] - self.beamwidth[1] / 2) % 360)
-        p3 = ((self.orientation[0] - self.beamwidth[0] / 2) % 360, (self.orientation[1] + self.beamwidth[1] / 2) % 360) 
+        p3 = ((self.orientation[0] - self.beamwidth[0] / 2) % 360, (self.orientation[1] + self.beamwidth[1] / 2) % 360)
         p4 = ((self.orientation[0] + self.beamwidth[0] / 2) % 360, (self.orientation[1] + self.beamwidth[1] / 2) % 360)
         return Polygon([p1, p2, p3, p4])
 
