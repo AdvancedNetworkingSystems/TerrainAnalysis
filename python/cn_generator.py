@@ -15,6 +15,8 @@ from folium import plugins
 import ubiquiti as ubnt
 from edgeffect import EdgeEffect
 import multiprocessing as mp
+import os
+import psutil
 
 
 def poor_mans_color_gamma(bitrate):
@@ -265,21 +267,27 @@ class CN_Generator():
         self.animation.save(self.animation_file)
 
     def main(self):
-        while not self.stop_condition():
-            self.round += 1
-            # pick random node
-            new_node = self.get_newnode()
-            # connect it to the network
-            if(self.add_links(new_node)):
-                # update area of susceptible nodes
-                self.get_susceptibles()
-                print("Number of nodes:%d, infected:%d, susceptible:%d"
-                      % (self.net.size(), len(self.infected),
-                         len(self.susceptible)))
-                if self.args.plot:
-                    self.plot_map()
-                self.restructure()
-                self.net.compute_minimum_bandwidth()
+        try:
+            while not self.stop_condition():
+                self.round += 1
+                # pick random node
+                new_node = self.get_newnode()
+                # connect it to the network
+                if(self.add_links(new_node)):
+                    # update area of susceptible nodes
+                    self.get_susceptibles()
+                    print("Number of nodes:%d, infected:%d, susceptible:%d"
+                          % (self.net.size(), len(self.infected),
+                             len(self.susceptible)))
+                    if self.args.plot:
+                        self.plot_map()
+                    self.restructure()
+                    self.net.compute_minimum_bandwidth()
+        except:
+            KeyboardInterrupt
+            pid=os.getpid()
+            killtree(pid)
+            pass
         # save result
         min_b = self.net.compute_minimum_bandwidth()
         for k, v in self.net.compute_metrics().items():
@@ -289,3 +297,12 @@ class CN_Generator():
             print("A browsable map was saved in " + self.map_file)
             print("A browsable animated map was saved in " +
                   self.animation_file)
+
+def killtree(pid, including_parent=False):
+    parent = psutil.Process(pid)
+    for child in parent.children(recursive=True):
+        child.kill()
+
+    if including_parent:
+        parent.kill()
+
