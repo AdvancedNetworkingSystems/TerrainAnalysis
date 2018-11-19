@@ -52,8 +52,10 @@ class CN_Generator():
                                  default=30000)
         self.parser.add_argument('-r', help="random seed,", type=int,
                                  default=1)
-        self.parser.add_argument('-B', help="min bandwidth per node (in Mbps)", type=float,
-                                 default=1)
+        self.parser.add_argument('-B', help="Accepts two arguments: bw frac."
+                "Stop when a fraction of frac nodes has less than bw bandwidth"
+                "(in Mbps). Ex: '1 0' will stop when any node has less than 1Mbps",
+                type=float, default=[1, 0], nargs=2)
         self.parser.add_argument('-R', help="restructure with edgeffect every r"
                 " rounds, adding l links. Accepts two arguments: r l", 
                                  nargs=2, type=int)
@@ -118,15 +120,18 @@ class CN_Generator():
 
     def stop_condition_minbw(self):
         # recompute minimum bw at each node
-        bw = self.B
+        bw = self.B[0]
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
-        for n in self.net.graph.nodes():
+        below_bw_nodes = 0
+        for n in self.infected:
             if n == self.net.gateway:
                 continue
             try:
                 if self.net.graph.node[n]['min_bw'] < bw:
-                    return True
+                    below_bw_nodes += 1
+                    if below_bw_nodes/len(self.infected()) > self.B[1]:
+                        return True
             except KeyError:
                 #if the nod has no 'min_bw' means that it is not connected
                 pass
