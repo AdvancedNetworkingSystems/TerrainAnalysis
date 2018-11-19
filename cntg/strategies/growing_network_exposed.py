@@ -15,7 +15,7 @@ class Growing_network_exposed(Growing_network):
 
     def stop_condition(self):
         if self.n:
-            bol = self.stop_condition_maxnodes() or self.stop_condition_minbw()
+            return self.stop_condition_maxnodes() or self.stop_condition_minbw()
         return self.stop_condition_minbw()
 
     def add_links(self, new_node):
