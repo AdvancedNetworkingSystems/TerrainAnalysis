@@ -123,13 +123,14 @@ class CN_Generator():
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
         below_bw_nodes = 0
-        for n in self.infected:
+        for b in self.infected:
+            n = b.gid
             if n == self.net.gateway:
                 continue
             try:
                 if self.net.graph.node[n]['min_bw'] < bw:
                     below_bw_nodes += 1
-                    if below_bw_nodes/len(self.infected()) > self.B[1]:
+                    if below_bw_nodes/len(self.infected) > self.B[1]:
                         return True
             except KeyError:
                 #if the nod has no 'min_bw' means that it is not connected
