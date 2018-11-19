@@ -62,11 +62,14 @@ class Building_CTR(Building):
             building = libterrain.session.query(Building_CTR) \
                 .filter(Building_CTR.codice.in_(libterrain.codici),
                         Building_CTR.geom.intersects(wkb_element),
-                        Building_CTR.geom.intersects(wkb_area))
+                        Building_CTR.geom.intersects(wkb_area)) \
+                .order_by(Building_CTR.gid)
         else:
             building = libterrain.session.query(Building_CTR) \
                 .filter(and_(Building_CTR.codice.in_(libterrain.codici),
-                             Building_CTR.geom.intersects(wkb_element)))
+                             Building_CTR.geom.intersects(wkb_element))) \
+                .order_by(Building_CTR.gid)
+
         return building.all()
     
     @staticmethod
@@ -90,11 +93,11 @@ class Building_OSM(Building):
     t_type = Column('type', String)
 
     def __str__(self):
-        if(len(self.name) > 0):
-            return "Name: {4} \nBuilding ID: {0} \nLongitude: {1} \nLatitude: {2} \nCodice: {3}"\
-                .format(self.gid, self.coords().x, self.coords().y, self.codice, self.name)
-        return "Building ID: {0} \nLongitude: {1} \nLatitude: {2} \nCodice: {3}"\
-            .format(self.gid, self.coords().x, self.coords().y, self.codice)
+        if(self.name):
+            return "Name: {3} \nBuilding ID: {0} \nLongitude: {1} \nLatitude: {2}"\
+                .format(self.gid, self.coords().x, self.coords().y, self.name)
+        return "Building ID: {0} \nLongitude: {1} \nLatitude: {2}"\
+            .format(self.gid, self.coords().x, self.coords().y)
 
     @staticmethod
     def get_buildings(libterrain, shape, area=None):
@@ -104,12 +107,14 @@ class Building_OSM(Building):
         wkb_element = from_shape(shape, srid=libterrain.srid)
         if area:
             wkb_area = from_shape(area, srid=libterrain.srid)
-            building = libterrain.session.query(Building_CTR) \
-                .filter(Building_CTR.geom.intersects(wkb_element),
-                        Building_CTR.geom.intersects(wkb_area))
+            building = libterrain.session.query(Building_OSM) \
+                .filter(Building_OSM.geom.intersects(wkb_element),
+                        Building_OSM.geom.intersects(wkb_area))\
+                .order_by(Building_OSM.gid)
         else:
             building = libterrain.session.query(Building_OSM) \
-                .filter(Building_OSM.geom.intersects(wkb_element))
+                .filter(Building_OSM.geom.intersects(wkb_element))\
+                .order_by(Building_OSM.gid)
         return building.all()
 
     @staticmethod

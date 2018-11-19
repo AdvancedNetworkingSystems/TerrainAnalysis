@@ -1,7 +1,7 @@
 import random
 import shapely
 from sqlalchemy import create_engine, and_
-from psycopg2.pool import PersistentConnectionPool, ThreadedConnectionPool
+from psycopg2.pool import ThreadedConnectionPool
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2.functions import GenericFunction
 from geoalchemy2 import Geometry

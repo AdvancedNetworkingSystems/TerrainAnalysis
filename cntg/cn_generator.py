@@ -91,7 +91,11 @@ class CN_Generator():
         return buildings[0]
 
     def get_random_node(self):
-        new_node = random.sample(self.susceptible, 1)[0]
+        random.seed(self.random_seed)
+        self.random_seed += self.random_seed**2
+        #must cast into list and order because sample on set is unpredictable
+        susceptible_tmp = sorted(list(self.susceptible), key=lambda x:x.gid)
+        new_node = random.sample(susceptible_tmp, 1)[0]
         self.susceptible.remove(new_node)
         return new_node
 
@@ -120,8 +124,12 @@ class CN_Generator():
         for n in self.net.graph.nodes():
             if n == self.net.gateway:
                 continue
-            if self.net.graph.node[n]['min_bw'] < bw:
-                return True
+            try:
+                if self.net.graph.node[n]['min_bw'] < bw:
+                    return True
+            except KeyError:
+                #if the nod has no 'min_bw' means that it is not connected
+                pass
         return False
 
     def add_links(self, new_node):
@@ -279,12 +287,12 @@ class CN_Generator():
                         self.plot_map()
                     self.restructure()
                     self.net.compute_minimum_bandwidth()
-        except:
-            KeyboardInterrupt
-            pid=os.getpid()
+        except KeyboardInterrupt:
+            pid = os.getpid()
             killtree(pid)
             pass
         # save result
+        print("F")
         min_b = self.net.compute_minimum_bandwidth()
         for k, v in self.net.compute_metrics().items():
             print(k, v)
