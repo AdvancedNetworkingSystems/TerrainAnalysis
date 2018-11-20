@@ -17,7 +17,7 @@ from edgeffect import EdgeEffect
 import multiprocessing as mp
 import os
 import psutil
-
+import datetime
 
 def poor_mans_color_gamma(bitrate):
     blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
@@ -39,6 +39,9 @@ class CN_Generator():
         self.pool = None
         self.net = network.Network()
         self.parser = argparse.ArgumentParser()
+        self.parser.add_argument("-D", help="debug: print metrics at each iteration"
+                                 " and save metrics in the given debug file",
+                                 nargs='?', default="", const="")
         self.parser.add_argument("-P", help="number of parallel processes",
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
@@ -67,6 +70,7 @@ class CN_Generator():
         self.B = self.args.B
         self.R = self.args.R
         self.random_seed = self.args.r
+        self.debug_file = None
         random.seed(self.random_seed)
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
@@ -153,10 +157,10 @@ class CN_Generator():
 
     def restructure_edgeeffect_mt(self, num_links=1):
         # run only every self.args.R[0] nodes added
-        if not self.args.R or self.net.size() % rounds != 0:
+        if not self.args.R or self.net.size() % self.args.R[0] != 0:
             return
 
-        num_links = self.R[2]
+        num_links = self.R[1]
         max_links = num_links
         ee = EdgeEffect(self.net.graph, self.net.main_sg())
         if not self.pool:
@@ -256,8 +260,16 @@ class CN_Generator():
         folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
                         fill_color="green", weight=1,
                         color='green').add_to(self.map)
-        for lat, lon in nx.get_node_attributes(self.net.graph, 'pos').values():
-            folium.Marker([lon, lat]).add_to(self.map)
+        max_event = max(nx.get_node_attributes(self.net.graph, 'event').values())
+        for node in self.net.graph.nodes(data=True):
+            (lat, lon) = node[1]['pos']
+            opacity = node[1]['event']/max_event 
+            if node[0] == self.net.gateway:
+                folium.Marker([lon, lat],
+                              icon=folium.Icon(color='red')
+                              ).add_to(self.map)
+            else:
+                folium.CircleMarker([lon, lat], fill=True, fill_opacity=opacity).add_to(self.map)
         for frm, to, p in self.net.graph.edges(data=True):
             lat_f, lon_f = nx.get_node_attributes(self.net.graph, 'pos')[frm]
             lat_t, lon_t = nx.get_node_attributes(self.net.graph, 'pos')[to]
@@ -289,13 +301,14 @@ class CN_Generator():
                 if(self.add_links(new_node)):
                     # update area of susceptible nodes
                     self.get_susceptibles()
-                    if self.args.plot:
-                        self.plot_map()
                     self.restructure()
                     print("Number of nodes:%d, infected:%d, susceptible:%d, "
                           "Nodes below bw:%d"
                           % (self.net.size(), len(self.infected),
                              len(self.susceptible), self.below_bw_nodes))
+                    if self.args.D and len(self.net.graph) > 2:
+                        self.print_metrics()
+                        self.plot_map()
         except KeyboardInterrupt:
             pid = os.getpid()
             killtree(pid)
@@ -306,9 +319,24 @@ class CN_Generator():
             print(k, v)
         if self.args.plot:
             self.save_evolution()
+            self.plot_map()
             print("A browsable map was saved in " + self.map_file)
             print("A browsable animated map was saved in " +
                   self.animation_file)
+        if self.debug_file:
+            self.debug_file.close()#close(self.f)
+
+    def print_metrics(self):
+        m = self.net.compute_metrics()
+        if not self.debug_file:
+            filename = self.args.D + datetime.datetime.now().strftime("_%h_%d_%H_%M") + ".log"
+            self.debug_file = open(filename, "w+")
+            header_line = "#" + str(self.args)
+            print(header_line, file=self.debug_file)
+            print("nodes,", ",".join(m.keys()), file=self.debug_file)
+        print(len(self.net.graph), ",",  ",".join(map(str, m.values())), 
+              file=self.debug_file)
+
 
 
 def killtree(pid, including_parent=False):

@@ -149,6 +149,8 @@ class Network():
         """ if C_0 is the component including the gateway, then if graph
         connectivity > 1, return 1/connectivity, else return the number of
         cut-points """
+        if len(self.graph) < 2:
+            return 1
         main_comp = None
         for c in nx.connected_component_subgraphs(self.graph.to_undirected()):
             if self.gateway in c.nodes():
@@ -168,10 +170,22 @@ class Network():
         metrics = {}
         min_bandwidth = self.compute_minimum_bandwidth()
         disconnected_nodes = 0
-        for d, b in min_bandwidth.items():
-            print(d, b)
+        percentiles = [10, 50, 90]
+        for perc in percentiles:
+            metrics["perc_"+str(perc)] = ""
+
+        counter = 1
+        per_i = 0
+        for d, b in sorted(min_bandwidth.items(), key=lambda x: x[1]):
             if not b:
                 disconnected_nodes += 1
+            else:
+                perc = int(100*counter/len(min_bandwidth))
+                counter += 1
+                if per_i < len(percentiles) and perc > percentiles[per_i]:
+                    metrics["perc_"+str(percentiles[per_i])] = b
+                    per_i += 1
+
         metrics["connected_nodes"] = 1 + len(min_bandwidth) -\
                                        disconnected_nodes
         metrics["unconnected_ratio"] = disconnected_nodes / \
