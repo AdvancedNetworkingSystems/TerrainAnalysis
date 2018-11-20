@@ -329,7 +329,10 @@ class CN_Generator():
     def print_metrics(self):
         m = self.net.compute_metrics()
         if not self.debug_file:
-            filename = self.args.D + datetime.datetime.now().strftime("_%h_%d_%H_%M") + ".log"
+            folder = "./data/"
+            os.makedirs(folder, exist_ok=True)
+            filename = folder + self.args.D + \
+                       datetime.datetime.now().strftime("_%h_%d_%H_%M") + ".log"
             self.debug_file = open(filename, "w+")
             header_line = "#" + str(self.args)
             print(header_line, file=self.debug_file)
