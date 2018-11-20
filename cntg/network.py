@@ -45,7 +45,7 @@ class Network():
         self.graph.remove_node(building.gid)
         self.cost -= node_fixed_cost
 
-    def add_link(self, link, attrs={}):
+    def add_link(self, link, existing_antenna=False, attrs={}):
         ant1 = None
         device0 = None
         link_per_antenna = 2
@@ -79,6 +79,20 @@ class Network():
                         link_per_antenna = l[2]['link_per_antenna'] + 2
                         l[2]['link_per_antenna'] += 2
                 break
+        if existing_antenna:
+            # if i want to add only to existing antennas
+            if ant1:
+                # if i found it
+                self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
+                                    src_ant=ant0, dst_ant=ant1, rate=rate0,
+                                    link_per_antenna=link_per_antenna, **attrs)
+                self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
+                                    src_ant=ant1, dst_ant=ant0, rate=rate1,
+                                    link_per_antenna=link_per_antenna, **attrs)
+                return ant0
+            else:
+                # no found antenna no connection
+                return None
         if not ant1:
             # Antenna not founded so we add it
             n_ant = len(self.graph.nodes[link['dst'].gid]['antennas'])
@@ -102,7 +116,7 @@ class Network():
         self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
                             src_ant=ant1, dst_ant=ant0, rate=rate1,
                             link_per_antenna=link_per_antenna, **attrs)
-        return True
+        return ant0
 
     def add_antenna(self, node, device, orientation):
         ant = Antenna(device, orientation)
