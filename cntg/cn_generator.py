@@ -34,7 +34,7 @@ class CN_Generator():
 
     def __init__(self, dataset, DSN=None, args={}, unk_args={}):
         self.round = 0
-        self.infected = []
+        self.infected = {}
         self.susceptible = set()
         self.pool = None
         self.net = network.Network()
@@ -81,7 +81,7 @@ class CN_Generator():
         latlong = self.b.split(",")
         self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
         gateway = self.get_gateway()
-        self.infected.append(gateway)
+        self.infected[gateway.gid] = gateway
         self.net.add_gateway(gateway, attrs={'event': 0})
         self.event_counter += 1
         self.get_susceptibles()
@@ -101,12 +101,12 @@ class CN_Generator():
         return new_node
 
     def get_susceptibles(self):
-        geoms = [g.shape() for g in self.infected]
+        geoms = [g.shape() for g in self.infected.values()]
         self.sb.set_shape(geoms)
 
         self.susceptible = set(self.t.get_buildings(
                                self.sb.get_buffer(self.e))
-                               ) - set(self.infected)
+                               ) - set(self.infected.values())
 
     def get_newnode(self):
         raise NotImplementedError
@@ -117,20 +117,23 @@ class CN_Generator():
     def stop_condition_maxnodes(self):
         return len(self.infected) > self.n
 
-    def stop_condition_minbw(self):
+    def stop_condition_minbw(self, rounds=1):
+        #in case you don't want to test the stop condition every round
+        if len(self.infected) % rounds != 0:
+            return False
+
         # recompute minimum bw at each node
         bw = self.B[0]
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
-        below_bw_nodes = 0
-        for b in self.infected:
-            n = b.gid
+        self.below_bw_nodes = 0
+        for n in self.infected:
             if n == self.net.gateway:
                 continue
             try:
                 if self.net.graph.node[n]['min_bw'] < bw:
-                    below_bw_nodes += 1
-                    if below_bw_nodes/len(self.infected) > self.B[1]:
+                    self.below_bw_nodes += 1
+                    if self.below_bw_nodes/len(self.infected) > self.B[1]:
                         return True
             except KeyError:
                 #if the nod has no 'min_bw' means that it is not connected
@@ -140,8 +143,9 @@ class CN_Generator():
     def add_links(self, new_node):
         raise NotImplementedError
 
-    def check_connectivity(self, set_nodes, new_node):
-        links = self.t.get_link_parallel(source_b=new_node, dst_b_list=set_nodes)
+    def check_connectivity(self, nodes, new_node):
+        links = self.t.get_link_parallel(source_b=new_node, 
+                                         dst_b_list=nodes)
         return links
 
     def restructure(self):
@@ -285,13 +289,13 @@ class CN_Generator():
                 if(self.add_links(new_node)):
                     # update area of susceptible nodes
                     self.get_susceptibles()
-                    print("Number of nodes:%d, infected:%d, susceptible:%d"
-                          % (self.net.size(), len(self.infected),
-                             len(self.susceptible)))
                     if self.args.plot:
                         self.plot_map()
                     self.restructure()
-                    self.net.compute_minimum_bandwidth()
+                    print("Number of nodes:%d, infected:%d, susceptible:%d, "
+                          "Nodes below bw:%d"
+                          % (self.net.size(), len(self.infected),
+                             len(self.susceptible), self.below_bw_nodes))
         except KeyboardInterrupt:
             pid = os.getpid()
             killtree(pid)

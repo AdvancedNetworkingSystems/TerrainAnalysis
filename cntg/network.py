@@ -1,7 +1,6 @@
 import networkx as nx
 from antenna import Antenna
 import ubiquiti as ubnt
-import code
 import numpy
 
 node_fixed_cost = 200
