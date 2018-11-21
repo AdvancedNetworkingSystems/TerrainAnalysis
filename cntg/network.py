@@ -45,14 +45,16 @@ class Network():
         self.graph.remove_node(building.gid)
         self.cost -= node_fixed_cost
 
-    def add_link(self, link, existing_antenna=False, attrs={}):
+    def add_link(self, link, existing_antenna=None, attrs={}):
         ant1 = None
         device0 = None
         link_per_antenna = 2
         # loop trough the antennas of the node
         for antenna in self.graph.nodes[link['dst'].gid]['antennas']:
+            ant1 = antenna
+            if existing_antenna and existing_antenna.channel != ant1.channel:
+                continue
             if antenna.check_node_vis(link_angles=link['dst_orient']):
-                ant1 = antenna
                 rate0, device0 = ubnt.get_fastest_link_hardware(
                                     link['loss'],
                                     target=antenna.ubnt_device[0])
@@ -64,7 +66,7 @@ class Network():
                     # Now we select the first one we find, but we should search
                     # for the optimal one (max rate)
                     ant1 = None
-                    break
+                    continue
                 rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device0[0],
                                                      antenna.ubnt_device[0])
                 # TODO: check any link connected with ant1, find the sharing
@@ -80,7 +82,8 @@ class Network():
                         l[2]['link_per_antenna'] += 2
                 break
         if existing_antenna:
-            # if i want to add only to existing antennas
+            # if i want to add an existing antenna on src only to existing
+            # antennas on dst 
             if ant1:
                 # if i found it
                 self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
@@ -89,12 +92,12 @@ class Network():
                 self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
                                     src_ant=ant1, dst_ant=ant0, rate=rate1,
                                     link_per_antenna=link_per_antenna, **attrs)
-                return ant0
+                return True
             else:
                 # no found antenna no connection
                 return None
         if not ant1:
-            # Antenna not founded so we add it
+            # Antenna not found so we add it
             n_ant = len(self.graph.nodes[link['dst'].gid]['antennas'])
             if(n_ant >= self.max_dev):
                 # Antenna can't be added because we reached the saturtion, no link.
@@ -109,7 +112,7 @@ class Network():
             ant1 = self.add_antenna(link['dst'].gid, device1, link['dst_orient'])
 
         # find proper device add antenna to local node
-        ant0 = self.add_antenna(link['src'].gid, device0, link['src_orient'])
+        ant0 = self.add_antenna(link['src'].gid, device0, link['src_orient'], ant1.channel)
         self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
                             src_ant=ant0, dst_ant=ant1, rate=rate0,
                             link_per_antenna=link_per_antenna, **attrs)
@@ -118,8 +121,21 @@ class Network():
                             link_per_antenna=link_per_antenna, **attrs)
         return ant0
 
-    def add_antenna(self, node, device, orientation):
-        ant = Antenna(device, orientation)
+    def add_antenna(self, node, device, orientation, channel=0):
+        if not channel:
+            free_channels = wifi.channels[:]
+            for ant in self.graph.nodes[node]['antennas']:
+                a.remove(ant.channel)
+            try:
+                channel = random.sample(free_channel, 1)
+            except ValueError:
+                # more antennas than channels, we have to re-use
+                # this should not happen, or else we have to divide
+                # capacity for all links in the same channel
+                print("wARN: you have more antennas than available channels")
+                channel = random.sample(wifi.channels, 1)
+
+        ant = Antenna(device, orientation, channel)
         self.graph.nodes[node]['antennas'].append(ant)
         self.graph.nodes[node]['cost'] += ant.device['average_price']
         self.cost += ant.device['average_price']

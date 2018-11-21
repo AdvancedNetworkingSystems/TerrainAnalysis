@@ -9,11 +9,13 @@ inputfile = sprintf("../data/%s", filename)
 set xlabel "Network Size"
 set ylabel "Mb/s"
 
+
+set yrange [0:]
 set key below
 set title "Bandwidth per node (percentiles)"
-plot inputfile u 1:(column('perc_10')) w lp title columnhead,\
-'' u 1:(column('perc_50')) w lp title columnhead,\
-'' u 1:(column('perc_90')) w lp title columnhead, 
+plot inputfile u 1:(column('perc_10')) w lp title columnhead ls 1 ps 0.5,\
+'' u 1:(column('perc_50')) w lp title columnhead ls 2 ps 0.5,\
+'' u 1:(column('perc_90')) w lp title columnhead ls 7 ps 0.5 
 
 set ylabel "Price"
 set title "Average price per node"

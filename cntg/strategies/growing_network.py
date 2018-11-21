@@ -31,6 +31,7 @@ class Growing_network(CN_Generator):
         return self.restructure_edgeeffect_mt()
 
     def add_links(self, new_node):
+        #returns all the potential links in LoS with the new node
         visible_links = [link for link in self.check_connectivity(
                          list(self.infected.values()), new_node) if link]
         
@@ -56,7 +57,7 @@ class Growing_network(CN_Generator):
         while link_in_viewshed:
             link = link_in_viewshed.pop()
             visible_links.remove(link)  # remove it from visible_links af
-            self.add_link(link)
+            self.add_link(link, existing_antenna=src_ant)
         # add the remaining links to a list of feasible links for edgeffect
         self.feasible_links += visible_links
         return True

@@ -3,8 +3,9 @@ import ubiquiti as ubnt
 
 
 class Antenna:
-    def __init__(self, device, orientation):
+    def __init__(self, device, orientation, channel):
         self.orientation = orientation
+        self.channel = 0
         self.ubnt_device = device
         self.device = ubnt.read_device(device[0])
         self.beamwidth = (self.device['beamwidth_az'], self.device['beamwidth_el'])
