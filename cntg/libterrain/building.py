@@ -40,7 +40,7 @@ class Building(Base):
 
 
 class Building_CTR(Building):
-    __tablename__ = 'ctr_firenze'
+    __tablename__ = 'ctr_toscana'
     foglio = Column(String)
     codice = Column(String)
     record = Column(Integer)
