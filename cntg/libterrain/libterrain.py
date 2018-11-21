@@ -198,5 +198,5 @@ class terrain():
         return self.building_class.get_building_gid(self.session, gid)
 
     def get_buildings(self, shape):
-        b = self.building_class.get_buildings(self, shape, area=self.polygon_area)
-        return b
+        buildings = self.building_class.get_buildings(self, shape, area=self.polygon_area)
+        return buildings
