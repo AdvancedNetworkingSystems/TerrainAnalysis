@@ -46,7 +46,8 @@ class Growing_network(CN_Generator):
         self.add_node(link['src'])
         try:
             src_ant = self.add_link(link)
-        except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion):
+        except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
+            print(e.msg)
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
             return False

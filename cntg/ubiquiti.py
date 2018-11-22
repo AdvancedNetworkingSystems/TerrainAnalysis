@@ -262,10 +262,6 @@ def get_fastest_link_hardware(pathloss, target=None):
                     max_mod = wifi.mcs_AC[d[1]][streams]\
                                         [wifi.default_channel_width]
                     device = d
-            elif get_attribute(d[0], 'technology') == '802.11n':
-                if max_mod < wifi.mcs_N[d[1]][wifi.default_channel_width]:
-                    max_mod = wifi.mcs_N[d[1]][wifi.default_channel_width]
-                    device = d
         return max_mod, device
     else:
         return 0, ''

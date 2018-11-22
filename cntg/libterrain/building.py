@@ -13,6 +13,13 @@ class Building(Base):
     gid = Column(Integer, primary_key=True)
     geom = Column(Geometry('POLYGON'))
 
+    def __hash__(self):
+        return hash(self.gid)
+
+    def __eq__(self, other):
+        # equality performed only on gid (unique in the db)
+        return self.gid == other.gid
+
     def __repr__(self):
         return str(self.gid)
 

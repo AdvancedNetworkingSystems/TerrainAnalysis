@@ -107,10 +107,8 @@ class CN_Generator():
     def get_susceptibles(self):
         geoms = [g.shape() for g in self.infected.values()]
         self.sb.set_shape(geoms)
-
-        self.susceptible = set(self.t.get_buildings(
-                               self.sb.get_buffer(self.e))
-                               ) - set(self.infected.values())
+        db_buildings = self.t.get_buildings(self.sb.get_buffer(self.e))
+        self.susceptible = set(db_buildings) - set(self.infected.values())
 
     def get_newnode(self):
         raise NotImplementedError
@@ -155,6 +153,42 @@ class CN_Generator():
     def restructure(self):
         raise NotImplementedError
 
+    def main(self):
+        try:
+            while not self.stop_condition():
+                self.round += 1
+                # pick random node
+                new_node = self.get_newnode()
+                # connect it to the network
+                if(self.add_links(new_node)):
+                    # update area of susceptible nodes
+                    self.get_susceptibles()
+                    self.restructure()
+                    print("Number of nodes:%d, infected:%d, susceptible:%d, "
+                          "Nodes below bw:%d"
+                          % (self.net.size(), len(self.infected),
+                             len(self.susceptible), self.below_bw_nodes))
+                    if self.args.D and len(self.net.graph) > 2:
+                        self.print_metrics()
+                        self.plot_map()
+                    #input("stop me")
+        except KeyboardInterrupt:
+            pid = os.getpid()
+            killtree(pid)
+            pass
+        # save result
+        min_b = self.net.compute_minimum_bandwidth()
+        for k, v in self.net.compute_metrics().items():
+            print(k, v)
+        if self.args.plot:
+            self.save_evolution()
+            self.plot_map()
+            print("A browsable map was saved in " + self.map_file)
+            print("A browsable animated map was saved in " +
+                  self.animation_file)
+        if self.debug_file:
+            self.debug_file.close()#close(self.f)
+
     def restructure_edgeeffect_mt(self, num_links=1):
         # run only every self.args.R[0] nodes added
         if not self.args.R or self.net.size() % self.args.R[0] != 0:
@@ -174,7 +208,11 @@ class CN_Generator():
                     if link['src'].gid == selected_edge[0] and
                     link['dst'].gid == selected_edge[1]
                     ]
-            if self.add_link(link[0]):
+            try:
+                self.add_link(link[0], existing=True)
+            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion):
+                pass
+            else:
                 max_links -= 1
                 if max_links <= 0:
                     print("Restructured {} links".format(num_links))
@@ -184,9 +222,14 @@ class CN_Generator():
         self.event_counter += 1
         return self.net.add_node(node, attrs={'event': self.event_counter})
 
-    def add_link(self, link):
+    def add_link(self, link, existing=False):
         self.event_counter += 1
-        return self.net.add_link(link, attrs={'event': self.event_counter})
+        result = None
+        if existing:
+            result = self.net.add_link_existing(link, attrs={'event': self.event_counter})
+        else:
+            result = self.net.add_link(link, attrs={'event': self.event_counter})
+        return result
 
     def save_graph(self):
         self.net.save_graph(self.filename)
@@ -263,18 +306,23 @@ class CN_Generator():
         max_event = max(nx.get_node_attributes(self.net.graph, 'event').values())
         for node in self.net.graph.nodes(data=True):
             (lat, lon) = node[1]['pos']
-            opacity = node[1]['event']/max_event 
+            label="Node: %d<br>Antennas:<br> %s" % (node[0], node[1]['antennas'])
+            opacity = node[1]['event']/max_event
             if node[0] == self.net.gateway:
                 folium.Marker([lon, lat],
-                              icon=folium.Icon(color='red')
+                              icon=folium.Icon(color='red'),
+                              popup=label
                               ).add_to(self.map)
             else:
-                folium.CircleMarker([lon, lat], fill=True, fill_opacity=opacity).add_to(self.map)
+                folium.CircleMarker([lon, lat],
+                                    fill=True,
+                                    popup=label,
+                                    fill_opacity=opacity).add_to(self.map)
         for frm, to, p in self.net.graph.edges(data=True):
             lat_f, lon_f = nx.get_node_attributes(self.net.graph, 'pos')[frm]
             lat_t, lon_t = nx.get_node_attributes(self.net.graph, 'pos')[to]
-            label = "Loss: %d dB<br>Rate: %d mbps<br>link_per_antenna: %d" % \
-                    (p['loss'], p['rate'], p['link_per_antenna'])
+            label = "Loss: %d dB<br>Rate: %d mbps<br>link_per_antenna: %d<br> src_orient %f <br> dst_orient %f" % \
+                    (p['loss'], p['rate'], p['link_per_antenna'], p['src_orient'][0], p['dst_orient'][0])
             weight = 1 + 8/p['link_per_antenna']  # reasonable defaults
             color = poor_mans_color_gamma(p['rate'])
             folium.PolyLine(locations=[[lon_f, lat_f], [lon_t, lat_t]],
@@ -290,41 +338,6 @@ class CN_Generator():
         self.graph_to_animation()
         self.animation_file = '/tmp/index-animation.html'
         self.animation.save(self.animation_file)
-
-    def main(self):
-        try:
-            while not self.stop_condition():
-                self.round += 1
-                # pick random node
-                new_node = self.get_newnode()
-                # connect it to the network
-                if(self.add_links(new_node)):
-                    # update area of susceptible nodes
-                    self.get_susceptibles()
-                    #self.restructure()
-                    print("Number of nodes:%d, infected:%d, susceptible:%d, "
-                          "Nodes below bw:%d"
-                          % (self.net.size(), len(self.infected),
-                             len(self.susceptible), self.below_bw_nodes))
-                    if self.args.D and len(self.net.graph) > 2:
-                        self.print_metrics()
-                        self.plot_map()
-        except KeyboardInterrupt:
-            pid = os.getpid()
-            killtree(pid)
-            pass
-        # save result
-        min_b = self.net.compute_minimum_bandwidth()
-        for k, v in self.net.compute_metrics().items():
-            print(k, v)
-        if self.args.plot:
-            self.save_evolution()
-            self.plot_map()
-            print("A browsable map was saved in " + self.map_file)
-            print("A browsable animated map was saved in " +
-                  self.animation_file)
-        if self.debug_file:
-            self.debug_file.close()#close(self.f)
 
     def print_metrics(self):
         m = self.net.compute_metrics()
