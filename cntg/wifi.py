@@ -16,7 +16,7 @@ tx_power_regulation_eu = {
         '2.4': 20,
         '5': 30}
 
-default_channel_width = 20
+default_channel_width = 40
 
 # EU allows channel 100-144 (5470-5725 MHz) for outdoor
 indipendent_channels_EU = {20: [100, 104, 108, 112, 116, 120, 124, 128, 132,

@@ -184,9 +184,9 @@ class CN_Generator():
         self.event_counter += 1
         return self.net.add_node(node, attrs={'event': self.event_counter})
 
-    def add_link(self, link, existing_antenna=False):
+    def add_link(self, link):
         self.event_counter += 1
-        return self.net.add_link(link, existing_antenna, attrs={'event': self.event_counter})
+        return self.net.add_link(link, attrs={'event': self.event_counter})
 
     def save_graph(self):
         self.net.save_graph(self.filename)
@@ -301,7 +301,7 @@ class CN_Generator():
                 if(self.add_links(new_node)):
                     # update area of susceptible nodes
                     self.get_susceptibles()
-                    self.restructure()
+                    #self.restructure()
                     print("Number of nodes:%d, infected:%d, susceptible:%d, "
                           "Nodes below bw:%d"
                           % (self.net.size(), len(self.infected),

@@ -6,7 +6,7 @@ import argparse
 import time
 from antenna import Antenna
 import code
-
+from antennas import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
 
 class Growing_network(CN_Generator):
 
@@ -43,21 +43,20 @@ class Growing_network(CN_Generator):
         visible_links.sort(key=lambda x: x['loss'], reverse=True)
         link = visible_links.pop()
         self.infected[link['src'].gid] = link['src']
-        # check if current node has already antennas and try to connect to them
         self.add_node(link['src'])
-        src_ant = self.add_link(link)
-        if not src_ant:
-            # if this link is not feasible the following ones (worser) aren't either
+        try:
+            src_ant = self.add_link(link)
+        except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion):
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
             return False
 
-        link_in_viewshed = [link for link in visible_links
-                            if src_ant.check_node_vis(link['src_orient'])]
-        while link_in_viewshed:
-            link = link_in_viewshed.pop()
-            visible_links.remove(link)  # remove it from visible_links af
-            self.add_link(link, existing_antenna=src_ant)
+        # link_in_viewshed = [link for link in visible_links
+        #                     if src_ant.check_node_vis(link['src_orient'])]
+        # while link_in_viewshed:
+        #     link = link_in_viewshed.pop()
+        #     visible_links.remove(link)  # remove it from visible_links af
+        #     self.add_link(link, existing_antenna=src_ant)
         # add the remaining links to a list of feasible links for edgeffect
         self.feasible_links += visible_links
         return True

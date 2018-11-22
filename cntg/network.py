@@ -1,8 +1,10 @@
 import networkx as nx
 from antenna import Antenna
+from antennas import Antennas
 import ubiquiti as ubnt
 import numpy
-
+import wifi
+import random
 node_fixed_cost = 200
 
 
@@ -37,7 +39,7 @@ class Network():
         self.gateway = building.gid
 
     def add_node(self, building, attrs={}):
-        self.graph.add_node(building.gid, pos=building.xy(), antennas=list(),
+        self.graph.add_node(building.gid, pos=building.xy(), antennas=Antennas(self.max_dev),
                             cost=node_fixed_cost, **attrs)
         self.cost += node_fixed_cost
 
@@ -45,101 +47,56 @@ class Network():
         self.graph.remove_node(building.gid)
         self.cost -= node_fixed_cost
 
-    def add_link(self, link, existing_antenna=None, attrs={}):
-        ant1 = None
-        device0 = None
+    def update_sharing_factor(self, link, antenna):
         link_per_antenna = 2
-        # loop trough the antennas of the node
-        for antenna in self.graph.nodes[link['dst'].gid]['antennas']:
-            ant1 = antenna
-            if existing_antenna and existing_antenna.channel != ant1.channel:
-                continue
-            if antenna.check_node_vis(link_angles=link['dst_orient']):
-                rate0, device0 = ubnt.get_fastest_link_hardware(
-                                    link['loss'],
-                                    target=antenna.ubnt_device[0])
-                if not rate0:
-                    # no radio available for this (link loss, target antenna)
-                    # try with a better antenna
-                    # TODO: We can have multiple antenna in the same viewshed
-                    # -> must doublecheck it
-                    # Now we select the first one we find, but we should search
-                    # for the optimal one (max rate)
-                    ant1 = None
-                    continue
-                rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device0[0],
-                                                     antenna.ubnt_device[0])
-                # TODO: check any link connected with ant1, find the sharing
-                # factor, add one to its sharing factor, store the sharing
-                # factor in the new link
-                for l in self.graph.out_edges(link['dst'].gid, data=True):
-                    if l[2]['src_ant'] == antenna:
-                        link_per_antenna = l[2]['link_per_antenna'] + 2
-                        l[2]['link_per_antenna'] += 2
-                for l in self.graph.in_edges(link['dst'].gid, data=True):
-                    if l[2]['dst_ant'] == antenna:
-                        link_per_antenna = l[2]['link_per_antenna'] + 2
-                        l[2]['link_per_antenna'] += 2
-                break
-        if existing_antenna:
-            # if i want to add an existing antenna on src only to existing
-            # antennas on dst 
-            if ant1:
-                # if i found it
-                self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
-                                    src_ant=ant0, dst_ant=ant1, rate=rate0,
-                                    link_per_antenna=link_per_antenna, **attrs)
-                self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
-                                    src_ant=ant1, dst_ant=ant0, rate=rate1,
-                                    link_per_antenna=link_per_antenna, **attrs)
-                return True
-            else:
-                # no found antenna no connection
-                return None
-        if not ant1:
-            # Antenna not found so we add it
-            n_ant = len(self.graph.nodes[link['dst'].gid]['antennas'])
-            if(n_ant >= self.max_dev):
-                # Antenna can't be added because we reached the saturtion, no link.
-                return False
-            rate1, device1 = ubnt.get_fastest_link_hardware(link['loss'])
-            if not rate1:
-                # TODO: What should we do if the link is unfeasible?
-                return False
-            rate0, rate1 = ubnt.get_maximum_rate(link['loss'], device1[0],
-                                                 device1[0])
-            device0 = device1
-            ant1 = self.add_antenna(link['dst'].gid, device1, link['dst_orient'])
+        for l in self.graph.out_edges(link['dst'].gid, data=True):
+            if l[2]['src_ant'] == antenna:
+                link_per_antenna = l[2]['link_per_antenna'] + 2
+                l[2]['link_per_antenna'] += 2
+        for l in self.graph.in_edges(link['dst'].gid, data=True):
+            if l[2]['dst_ant'] == antenna:
+                link_per_antenna = l[2]['link_per_antenna'] + 2
+                l[2]['link_per_antenna'] += 2
+        return link_per_antenna
 
-        # find proper device add antenna to local node
-        ant0 = self.add_antenna(link['src'].gid, device0, link['src_orient'], ant1.channel)
-        self.graph.add_edge(link['src'].gid, link['dst'].gid, loss=link['loss'],
-                            src_ant=ant0, dst_ant=ant1, rate=rate0,
-                            link_per_antenna=link_per_antenna, **attrs)
-        self.graph.add_edge(link['dst'].gid, link['src'].gid, loss=link['loss'],
-                            src_ant=ant1, dst_ant=ant0, rate=rate1,
-                            link_per_antenna=link_per_antenna, **attrs)
-        return ant0
+    def add_link(self, link, attrs={}):
+        # Search if there's an antenna usable at the destination
+        dst_antennas = self.graph.nodes[link['dst'].gid]['antennas']
+        dst_ant = dst_antennas.get_best_antenna(link)
+        if not dst_ant:
+            # We need to add an antenna
+            dst_ant = dst_antennas.add_antenna(loss=link['loss'],
+                                               orientation=link['dst_orient'])
+            link_per_antenna = 2
+        else:  # Antenna found, update the sharing factor
+            link_per_antenna = self.update_sharing_factor(link, dst_ant)
+        src_antennas = self.graph.nodes[link['dst'].gid]['antennas']
+        src_ant = src_antennas.add_antenna(loss=link['loss'],
+                                           orientation=link['src_orient'],
+                                           device=dst_ant.ubnt_device,
+                                           channel=dst_ant.channel)
+        # Now there are 2 devices, calculate the rates
+        src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
+                                                   src_ant.ubnt_device[0],
+                                                   dst_ant.ubnt_device[0])
+        # Add everything to nx graph
+        self.graph.add_edge(link['src'].gid,
+                            link['dst'].gid,
+                            loss=link['loss'],
+                            src_ant=src_ant,
+                            dst_ant=dst_ant,
+                            rate=src_rate,
+                            link_per_antenna=link_per_antenna,
+                            **attrs)
 
-    def add_antenna(self, node, device, orientation, channel=0):
-        if not channel:
-            free_channels = wifi.channels[:]
-            for ant in self.graph.nodes[node]['antennas']:
-                a.remove(ant.channel)
-            try:
-                channel = random.sample(free_channel, 1)
-            except ValueError:
-                # more antennas than channels, we have to re-use
-                # this should not happen, or else we have to divide
-                # capacity for all links in the same channel
-                print("wARN: you have more antennas than available channels")
-                channel = random.sample(wifi.channels, 1)
-
-        ant = Antenna(device, orientation, channel)
-        self.graph.nodes[node]['antennas'].append(ant)
-        self.graph.nodes[node]['cost'] += ant.device['average_price']
-        self.cost += ant.device['average_price']
-        return ant
+        self.graph.add_edge(link['dst'].gid,
+                            link['src'].gid,
+                            loss=link['loss'],
+                            src_ant=dst_ant,
+                            dst_ant=src_ant,
+                            rate=dst_rate,
+                            link_per_antenna=link_per_antenna,
+                            **attrs)
 
     def save_graph(self, filename):
         self.compute_minimum_bandwidth()
@@ -154,6 +111,9 @@ class Network():
             del self.graph.edges[edge]['dst_ant']
         nx.write_graphml(self.graph, filename)
 
+
+
+# --- METRICS ---
     def compute_minimum_bandwidth(self):
         min_bandwidth = {}
         for d in self.graph.nodes():
