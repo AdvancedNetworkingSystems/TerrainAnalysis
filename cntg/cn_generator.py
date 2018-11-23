@@ -222,7 +222,7 @@ class CN_Generator():
         self.event_counter += 1
         return self.net.add_node(node, attrs={'event': self.event_counter})
 
-    def add_link(self, link, existing=False):
+    def add_link(self, link, existing=True):
         self.event_counter += 1
         result = None
         if existing:

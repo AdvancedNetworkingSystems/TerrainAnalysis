@@ -67,10 +67,10 @@ class Network():
         # set it to the attribute
         if src_antenna:
             for l in self.graph.out_edges(link['src'].gid, data=True):
-                if l[2]['dst_ant'] == antenna:
+                if l[2]['dst_ant'] == src_antenna:
                     l[2]['link_per_antenna'] = degree
             for l in self.graph.in_edges(link['src'].gid, data=True):
-                if l[2]['src_ant'] == antenna:
+                if l[2]['src_ant'] == src_antenna:
                     l[2]['link_per_antenna'] = degree
         if dst_antennna:
             for l in self.graph.out_edges(link['dst'].gid, data=True):
@@ -82,19 +82,52 @@ class Network():
 
         return degree
 
-    def add_link(self, link, attrs={}):
-        # Search if there's an antenna usable at the destination
+    # def add_link(self, link, attrs={}):
+    #     # Search if there's an antenna usable at the destination
+    #     dst_antennas = self.graph.nodes[link['dst'].gid]['antennas']
+    #     dst_ant = dst_antennas.get_best_antenna(link)
+    #     link_per_antenna = self.update_sharing_factor(link, dst_antennna=dst_ant)
+    #     src_antennas = self.graph.nodes[link['src'].gid]['antennas']
+    #     src_ant = src_antennas.add_antenna(loss=link['loss'],
+    #                                        orientation=link['src_orient'],
+    #                                        target_ant=dst_ant)
+    #     # print("Added link from %s to %s oriented %s, %s" % (link['src'].gid, link['dst'].gid, link['src_orient'], link['dst_orient']))
+    #     # print("src_ant %s, dst_ant %s"%(src_ant, dst_ant))
+    #     # Now there are 2 devices, calculate the rates
+    #     src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
+    #                                                src_ant.ubnt_device[0],
+    #                                                dst_ant.ubnt_device[0])
+    #     # Add everything to nx graph
+    #     self.graph.add_edge(link['src'].gid,
+    #                         link['dst'].gid,
+    #                         loss=link['loss'],
+    #                         src_ant=src_ant,
+    #                         dst_ant=dst_ant,
+    #                         src_orient=link['src_orient'],
+    #                         dst_orient=link['dst_orient'],
+    #                         rate=src_rate,
+    #                         link_per_antenna=link_per_antenna,
+    #                         **attrs)
+    # 
+    #     self.graph.add_edge(link['dst'].gid,
+    #                         link['src'].gid,
+    #                         loss=link['loss'],
+    #                         src_ant=dst_ant,
+    #                         dst_ant=src_ant,
+    #                         src_orient=link['dst_orient'],
+    #                         dst_orient=link['src_orient'],
+    #                         rate=dst_rate,
+    #                         link_per_antenna=link_per_antenna,
+    #                         **attrs)
+
+    def add_link_existing(self, link, attrs={}):
+        # Pick the best antenna at dst
         dst_antennas = self.graph.nodes[link['dst'].gid]['antennas']
-        dst_ant = dst_antennas.get_best_antenna(link)
-        link_per_antenna = self.update_sharing_factor(link, dst_antennna=dst_ant)
+        dst_ant = dst_antennas.get_best_antenna(link)  # if not available is a new one
         src_antennas = self.graph.nodes[link['src'].gid]['antennas']
-        src_ant = src_antennas.add_antenna(loss=link['loss'],
-                                           orientation=link['src_orient'],
-                                           device=dst_ant.ubnt_device,
-                                           channel=dst_ant.channel)
-        # print("Added link from %s to %s oriented %s, %s" % (link['src'].gid, link['dst'].gid, link['src_orient'], link['dst_orient']))
-        # print("src_ant %s, dst_ant %s"%(src_ant, dst_ant))
-        # Now there are 2 devices, calculate the rates
+        src_ant = src_antennas.get_best_antenna(link, dst_ant)
+        link_per_antenna = self.update_sharing_factor(link, src_antenna=src_ant, dst_antennna=dst_ant)  # TODO: check it
+
         src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
                                                    src_ant.ubnt_device[0],
                                                    dst_ant.ubnt_device[0])
@@ -104,9 +137,9 @@ class Network():
                             loss=link['loss'],
                             src_ant=src_ant,
                             dst_ant=dst_ant,
-                            src_orient=link['src_orient'],
-                            dst_orient=link['dst_orient'],
                             rate=src_rate,
+                            dst_orient=link['dst_orient'],
+                            src_orient=link['src_orient'],
                             link_per_antenna=link_per_antenna,
                             **attrs)
 
@@ -120,36 +153,7 @@ class Network():
                             rate=dst_rate,
                             link_per_antenna=link_per_antenna,
                             **attrs)
-
-    def add_link_existing(link, attrs={}):
-        # Pick the best antenna at dst
-        dst_antennas = self.graph.nodes[link['dst'].gid]['antennas']
-        dst_ant = dst_antennas.get_best_antenna(link)  # if not available is a new one
-        src_antennas = self.graph.nodes[link['src'].gid]['antennas']
-        src_ant = src_antennas.get_best_antenna(link)
-        link_per_antenna = self.update_sharing_factor(link, src_antenna=src_ant, dst_antennna=dst_ant)  # TODO: check it
-
-        src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
-                                                   src_ant.ubnt_device[0],
-                                                   dst_ant.ubnt_device[0])
-        # Add everything to nx graph
-        self.graph.add_edge(link['src'].gid,
-                            link['dst'].gid,
-                            loss=link['loss'],
-                            src_ant=src_ant,
-                            dst_ant=dst_ant,
-                            rate=src_rate,
-                            link_per_antenna=link_per_antenna,
-                            **attrs)
-
-        self.graph.add_edge(link['dst'].gid,
-                            link['src'].gid,
-                            loss=link['loss'],
-                            src_ant=dst_ant,
-                            dst_ant=src_ant,
-                            rate=dst_rate,
-                            link_per_antenna=link_per_antenna,
-                            **attrs)
+        return src_ant
 
     def save_graph(self, filename):
         self.compute_minimum_bandwidth()
