@@ -57,7 +57,11 @@ class Growing_network(CN_Generator):
         while link_in_viewshed:
             link = link_in_viewshed.pop()
             visible_links.remove(link)  # remove it from visible_links af
-            self.add_link(link, existing=True)
+            try:
+                self.add_link(link, existing=True)
+            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
+                print(e.msg)
+
         # add the remaining links to a list of feasible links for edgeffect
         self.feasible_links += visible_links
         return True
