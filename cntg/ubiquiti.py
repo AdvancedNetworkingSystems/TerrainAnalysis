@@ -223,6 +223,7 @@ def check_link(x, y, pathloss):
     else:
         return True
 
+
 def get_maximum_rate(pathloss, src, dst):
     possible_mod_dw = get_feasible_modulation_list(src, dst, pathloss)
     possible_mod_up = get_feasible_modulation_list(src, dst, pathloss)
@@ -231,37 +232,45 @@ def get_maximum_rate(pathloss, src, dst):
     src_streams = int(get_attribute(src, 'max_streams'))
     dst_streams = int(get_attribute(dst, 'max_streams'))
     streams = min(src_streams, dst_streams)
-    dw_rate = wifi.mcs_AC[possible_mod_dw.pop()][streams]\
-                        [wifi.default_channel_width]
-    up_rate = wifi.mcs_AC[possible_mod_up.pop()][streams]\
-                        [wifi.default_channel_width]
+    dw_rate = max([wifi.mcs_AC[x][streams][wifi.default_channel_width]
+                  for x in possible_mod_dw])
+    up_rate = max([wifi.mcs_AC[x][streams][wifi.default_channel_width]
+                  for x in possible_mod_up])
     return (dw_rate, up_rate)
+
 
 def get_fastest_link_hardware(pathloss, target=None):
     tmp = []
     if target:
+        # FIXME restructure this if
         # Find best source wrt target and Estimate the rate and mod for a given link
         for d in devices:
             possible_mod = get_feasible_modulation_list(d, target, pathloss)
             if possible_mod:
-                tmp.append((d, possible_mod.pop()))
+                tmp.append((d, possible_mod))
     else:
         # Find best device pair (2 identical device) for a link
         for d in devices:
             possible_mod = get_feasible_modulation_list(d, d, pathloss)
             if possible_mod:
-                tmp.append((d, possible_mod.pop()))
+                tmp.append((d, possible_mod))
     max_mod = 0
     device = ''
     if tmp:
         for d in tmp:
             if get_attribute(d[0], 'technology') == 'AirMax ac':
                 streams = int(get_attribute(d[0], 'max_streams'))
-                if max_mod < wifi.mcs_AC[d[1]][streams]\
-                                        [wifi.default_channel_width]:
-                    max_mod = wifi.mcs_AC[d[1]][streams]\
-                                        [wifi.default_channel_width]
-                    device = d
+                for MCS in d[1]:
+                    mod = wifi.mcs_AC[MCS][streams]\
+                                            [wifi.default_channel_width]
+                    if not mod:
+                        continue
+                    if max_mod < wifi.mcs_AC[MCS][streams]\
+                                            [wifi.default_channel_width]:
+                        max_mod = wifi.mcs_AC[MCS][streams]\
+                                            [wifi.default_channel_width]
+                        device = (d[0], MCS)
+        print(max_mod, device)
         return max_mod, device
     else:
         return 0, ''
