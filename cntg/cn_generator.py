@@ -222,14 +222,12 @@ class CN_Generator():
         self.event_counter += 1
         return self.net.add_node(node, attrs={'event': self.event_counter})
 
-    def add_link(self, link, existing=True):
+    def add_link(self, link, existing=False, reverse=False):
         self.event_counter += 1
-        result = None
-        if existing:
-            result = self.net.add_link_existing(link, attrs={'event': self.event_counter})
-        else:
-            result = self.net.add_link(link, attrs={'event': self.event_counter})
-        return result
+        return self.net.add_link_generic(link=link,
+                                         attrs={'event': self.event_counter},
+                                         existing=existing,
+                                         reverse=reverse)
 
     def save_graph(self):
         self.net.save_graph(self.filename)

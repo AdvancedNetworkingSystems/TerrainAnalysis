@@ -25,34 +25,48 @@ class Antennas:
         self.max_ant = max_ant
         self.free_channels = wifi.channels[:]
 
+    def __repr__(self):
+        return(str(self))
+
     def __str__(self):
         string = ""
         for a in self.antennas:
             string += str(a) + "<br>"
         return string
 
-    def add_antenna(self, loss, orientation, target_ant=None):
+    def __len__(self):
+        return len(self.antennas)
+
+    def check_channel(self, channel):
+        if channel not in self.free_channels:
+            raise ChannelExahustion
+        self.free_channels.remove(channel)
+
+    def add_antenna(self, loss, orientation, device=None, channel=None):
         # If the device is not provided we must find the best one for this link
-        if not target_ant:
+        if not device:
             src_device = ubnt.get_fastest_link_hardware(loss)[1]
-            channel = self._pick_channel()
-        # If it is provided we have to find the best one wrt that device
         else:
-            src_device = ubnt.get_fastest_link_hardware(loss, target_ant.ubnt_device[0])[1]
-            channel = target_ant.channel
+            src_device = ubnt.get_fastest_link_hardware(loss, device[0])[1]
+        if not channel:
+            channel = self._pick_channel()
+        else:
+            self.check_channel(channel)
         if not src_device:
             raise LinkUnfeasibilty
         if(len(self.antennas) >= self.max_ant):
-            raise AntennasExahustion            
+            raise AntennasExahustion
         ant = Antenna(src_device, orientation, channel)
         self.antennas.append(ant)
         return ant
 
-    def get_best_antenna(self, link, target_ant=None):
+    def get_best_dst_antenna(self, link):
         result = None
         # filter the antennas that are directed toward the src
+        # and on the same channel
         visible_antennas = [ant for ant in self.antennas
                             if ant.check_node_vis(link_angles=link['dst_orient'])]
+
         # sort them by the bitrate and take the fastest one
         if visible_antennas:
             best_ant = max(visible_antennas,
@@ -60,8 +74,7 @@ class Antennas:
                                                                         target=x.ubnt_device[0])[0])
             result = best_ant
         else:
-            result = self.add_antenna(loss=link['loss'], orientation=link['dst_orient'], target_ant=target_ant)
-        #print(result.ubnt_device)
+            result = self.add_antenna(loss=link['loss'], orientation=link['dst_orient'])
         return result
 
     def _pick_channel(self):
