@@ -93,9 +93,9 @@ class Network():
             link = reverse_link
 
         if existing:
-            result = self._add_link_existing(link)
+            result = self._add_link_existing(link, attrs)
         else:
-            result = self._add_link(link)
+            result = self._add_link(link, attrs)
         return result
     '''
     This function is used to connect a new node (src) to an existing node of the network

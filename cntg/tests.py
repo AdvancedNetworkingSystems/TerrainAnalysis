@@ -156,5 +156,20 @@ class NetworkTests(unittest.TestCase):
             if e[1] in [1, 4]:
                 self.assertEqual(e[2]['link_per_antenna'], 4)
 
+
+class TestDataStr(unittest.TestCase):
+
+    ubnt.load_devices()
+
+    def test_fastest_link(self):
+        for p in range(80, 160, 10):
+            print(ubnt.get_fastest_link_hardware(p))
+
+    def test_feasible_modulations(self):
+        mod_list = ubnt.get_feasible_modulation_list("AM-LiteBeam5ACGEN2",
+                                                         "AM-LiteBeam5ACGEN2",
+                                                         100)
+
+
 if __name__ == '__main__':
     unittest.main()
