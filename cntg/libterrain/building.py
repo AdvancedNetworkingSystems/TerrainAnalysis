@@ -4,6 +4,7 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape, from_shape
 import numpy as np
 import shapely
+from geoalchemy2.functions import ST_Intersects
 
 Base = declarative_base()
 
@@ -68,13 +69,13 @@ class Building_CTR(Building):
             wkb_area = from_shape(area, srid=libterrain.srid)
             building = libterrain.session.query(Building_CTR) \
                 .filter(Building_CTR.codice.in_(libterrain.codici),
-                        Building_CTR.geom.intersects(wkb_element),
-                        Building_CTR.geom.intersects(wkb_area)) \
+                        Building_CTR.geom.ST_Intersects(wkb_element),
+                        Building_CTR.geom.ST_Intersects(wkb_area)) \
                 .order_by(Building_CTR.gid)
         else:
             building = libterrain.session.query(Building_CTR) \
                 .filter(and_(Building_CTR.codice.in_(libterrain.codici),
-                             Building_CTR.geom.intersects(wkb_element))) \
+                             Building_CTR.geom.ST_Intersects(wkb_element))) \
                 .order_by(Building_CTR.gid)
 
         return building.all()
@@ -87,7 +88,7 @@ class Building_CTR(Building):
         wkb_element = from_shape(shape, srid=libterrain.srid)
         building = libterrain.session.query(Building_CTR) \
             .filter(and_(Building_CTR.codice.in_(libterrain.codici),
-                         Building_CTR.geom.intersects(wkb_element)))
+                         Building_CTR.geom.ST_Intersects(wkb_element)))
         return building.count()
 
 
@@ -115,12 +116,12 @@ class Building_OSM(Building):
         if area:
             wkb_area = from_shape(area, srid=libterrain.srid)
             building = libterrain.session.query(Building_OSM) \
-                .filter(Building_OSM.geom.intersects(wkb_element),
-                        Building_OSM.geom.intersects(wkb_area))\
+                .filter(and_(Building_OSM.geom.ST_Intersects(wkb_area),
+                             Building_OSM.geom.ST_Intersects(wkb_element)))\
                 .order_by(Building_OSM.gid)
         else:
             building = libterrain.session.query(Building_OSM) \
-                .filter(Building_OSM.geom.intersects(wkb_element))\
+                .filter(Building_OSM.geom.ST_Intersects(wkb_element))\
                 .order_by(Building_OSM.gid)
         return building.all()
 
@@ -131,6 +132,6 @@ class Building_OSM(Building):
         """
         wkb_element = from_shape(shape, srid=libterrain.srid)
         building = libterrain.session.query(Building_OSM) \
-            .filter(Building_OSM.geom.intersects(wkb_element))
+            .filter(Building_OSM.geom.ST_Intersects(wkb_element))
         result = building.count()
         return result
