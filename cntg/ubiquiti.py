@@ -166,7 +166,6 @@ def get_capacity_af_mod_band(x, mod, band):
 
 
 def get_feasible_modulation_list(x, y, pathloss, cap_tx_power=True):
-
     if not check_link(x, y, pathloss):
         return ''
 
@@ -240,6 +239,8 @@ def get_maximum_rate(pathloss, src, dst):
 
 
 def get_fastest_link_hardware(pathloss, target=None):
+    """ return the device that has the best MCS on a given pathloss. If there
+    is a tie, return the cheapest one """
     tmp = []
     if target:
         # FIXME restructure this if
@@ -254,8 +255,8 @@ def get_fastest_link_hardware(pathloss, target=None):
             possible_mod = get_feasible_modulation_list(d, d, pathloss)
             if possible_mod:
                 tmp.append((d, possible_mod))
-    max_mod = 0
-    device = ''
+    max_mod = [0]
+    device = []
     if tmp:
         for d in tmp:
             if get_attribute(d[0], 'technology') == 'AirMax ac':
@@ -265,13 +266,22 @@ def get_fastest_link_hardware(pathloss, target=None):
                                             [wifi.default_channel_width]
                     if not mod:
                         continue
-                    if max_mod < wifi.mcs_AC[MCS][streams]\
+                    if max_mod[0] < wifi.mcs_AC[MCS][streams]\
                                             [wifi.default_channel_width]:
-                        max_mod = wifi.mcs_AC[MCS][streams]\
-                                            [wifi.default_channel_width]
-                        device = (d[0], MCS)
-        print(max_mod, device)
-        return max_mod, device
+                        max_mod = [wifi.mcs_AC[MCS][streams]\
+                                            [wifi.default_channel_width]]
+                        device = [(d[0], MCS)]
+                    if max_mod[0] == wifi.mcs_AC[MCS][streams]\
+                                              [wifi.default_channel_width]:
+                        max_mod.append(wifi.mcs_AC[MCS][streams]\
+                                            [wifi.default_channel_width])
+                        device.append((d[0], MCS))
+        if not device:
+            return 0, ''
+        else:
+            i = device.index(sorted(device, key=lambda x:
+                                    get_attribute(x, 'average_price'))[0])
+            return max_mod[i], device[i]
     else:
         return 0, ''
 
