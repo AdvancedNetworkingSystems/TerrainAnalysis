@@ -1,6 +1,6 @@
 import networkx as nx
 from antenna import Antenna
-from antennas import Antennas
+from node import Node
 import ubiquiti as ubnt
 import numpy
 import wifi
@@ -40,7 +40,7 @@ class Network():
     def add_node(self, building, attrs={}):
         self.graph.add_node(building.gid,
                             pos=building.xy(),
-                            antennas=Antennas(self.max_dev),
+                            node=Node(self.max_dev),
                             **attrs)
 
     def del_node(self, building):
@@ -104,9 +104,9 @@ class Network():
         if link['dst'].gid == 923713:
             import pdb; pdb.set_trace()
         # Search if there's an antenna usable at the destination
-        dst_antennas = self.graph.nodes[link['dst'].gid]['antennas']
+        dst_antennas = self.graph.nodes[link['dst'].gid]['node']
         dst_ant = dst_antennas.get_best_dst_antenna(link)
-        src_antennas = self.graph.nodes[link['src'].gid]['antennas']
+        src_antennas = self.graph.nodes[link['src'].gid]['node']
         src_ant = src_antennas.add_antenna(loss=link['loss'],
                                            orientation=link['src_orient'],
                                            device=dst_ant.ubnt_device,
@@ -144,8 +144,8 @@ class Network():
 
     def _add_link_existing(self, link, attrs={}):
         # Pick the best antenna at dst
-        dst_antennas = self.graph.nodes[link['dst'].gid]['antennas']
-        src_antennas = self.graph.nodes[link['src'].gid]['antennas']
+        dst_antennas = self.graph.nodes[link['dst'].gid]['node']
+        src_antennas = self.graph.nodes[link['src'].gid]['node']
         #Check if there's a free channel on both (intersection)
         free_channels = set(dst_antennas.free_channels) & set(src_antennas.free_channels)
         try:
@@ -193,7 +193,7 @@ class Network():
             self.graph.node[node]['y'] = self.graph.node[node]['pos'][1]
             del self.graph.node[node]['pos']
             # remove antenna to allow graph_ml exportation
-            del self.graph.node[node]['antennas']
+            del self.graph.node[node]['node']
         for edge in self.graph.edges():
             del self.graph.edges[edge]['src_ant']
             del self.graph.edges[edge]['dst_ant']
@@ -254,7 +254,7 @@ class Network():
         # Calculate costo of network
         self.cost = 0
         for n in self.graph.nodes(data=True):
-            self.cost += n[1]['antennas'].cost()
+            self.cost += n[1]['node'].cost()
         counter = 1
         per_i = 0
         for d, b in sorted(min_bandwidth.items(), key=lambda x: x[1]):

@@ -17,7 +17,7 @@ class Antenna:
         return('(' + str(self) + ')')
 
     def __str__(self):
-        return "%s %f+/-%f, %s, %dMhz" % (self.id, self.orientation[0], self.beamwidth[0] / 2, self.ubnt_device[0], self.channel)
+        return "%f+/-%f, %s, %dMhz" % (self.orientation[0], self.beamwidth[0] / 2, self.ubnt_device[0], self.channel)
 
     def set_beamwidth_area(self):
         self.az_area = ((self.orientation[0] - self.beamwidth[0] / 2) % 360, (self.orientation[0] + self.beamwidth[0] / 2) % 360)

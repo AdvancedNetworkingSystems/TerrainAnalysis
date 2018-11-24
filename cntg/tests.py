@@ -1,7 +1,7 @@
 import unittest
 import network
 import ubiquiti as ubnt
-from antennas import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
+from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
 import numpy as np
 import math as m
 
@@ -53,11 +53,11 @@ class NetworkTests(unittest.TestCase):
         link = self.gen_link(b2, b1)
         self.n.add_link_generic(link)
         # Check that the two antennas are aligned
-        self.assertEqual((self.n.graph.nodes[1]['antennas'].antennas[0].orientation[0] + 180) % 360,
-                        self.n.graph.nodes[2]['antennas'].antennas[0].orientation[0])
+        self.assertEqual((self.n.graph.nodes[1]['node'].antennas[0].orientation[0] + 180) % 360,
+                        self.n.graph.nodes[2]['node'].antennas[0].orientation[0])
         # Check that the channel is the same
-        self.assertEqual(self.n.graph.nodes[1]['antennas'].antennas[0].channel,
-                        self.n.graph.nodes[2]['antennas'].antennas[0].channel)
+        self.assertEqual(self.n.graph.nodes[1]['node'].antennas[0].channel,
+                        self.n.graph.nodes[2]['node'].antennas[0].channel)
 
     def test_twolink_in_viewshed(self):
         b1 = FakeBuilding(1, (-0.1, -0.1))
@@ -71,7 +71,7 @@ class NetworkTests(unittest.TestCase):
         self.n.add_link_generic(self.gen_link(b3, b2))
         # verify that there is only 1 antenna per node
         for n in self.n.graph.nodes(data=True):
-            self.assertEqual(len(n[1]['antennas']), 1)
+            self.assertEqual(len(n[1]['node']), 1)
         for e in self.n.graph.out_edges(2, data=True):
             self.assertEqual(e[2]['link_per_antenna'], 4)
 
@@ -87,9 +87,9 @@ class NetworkTests(unittest.TestCase):
         self.n.add_node(b3)
         self.n.add_link_generic(self.gen_link(b3, b2), existing=True)
         # verify that there is only 1 antenna per node (2 for the node in between)
-        self.assertEqual(len(self.n.graph.nodes[1]['antennas']), 1)
-        self.assertEqual(len(self.n.graph.nodes[2]['antennas']), 2)
-        self.assertEqual(len(self.n.graph.nodes[3]['antennas']), 1)
+        self.assertEqual(len(self.n.graph.nodes[1]['node']), 1)
+        self.assertEqual(len(self.n.graph.nodes[2]['node']), 2)
+        self.assertEqual(len(self.n.graph.nodes[3]['node']), 1)
 
     def test_twoisland_merge(self):
         b1 = FakeBuilding(1, (1, 1))
@@ -109,11 +109,11 @@ class NetworkTests(unittest.TestCase):
         self.n.add_link_generic(self.gen_link(b4, b5))
 
         self.n.add_link_generic(self.gen_link(b4, b1), existing=True)
-        self.assertEqual(len(self.n.graph.nodes[1]['antennas']), 3)
-        self.assertEqual(len(self.n.graph.nodes[2]['antennas']), 2)
-        self.assertEqual(len(self.n.graph.nodes[3]['antennas']), 1)
-        self.assertEqual(len(self.n.graph.nodes[4]['antennas']), 2)
-        self.assertEqual(len(self.n.graph.nodes[5]['antennas']), 2)
+        self.assertEqual(len(self.n.graph.nodes[1]['node']), 3)
+        self.assertEqual(len(self.n.graph.nodes[2]['node']), 2)
+        self.assertEqual(len(self.n.graph.nodes[3]['node']), 1)
+        self.assertEqual(len(self.n.graph.nodes[4]['node']), 2)
+        self.assertEqual(len(self.n.graph.nodes[5]['node']), 2)
 
     def test_ant_exaustion(self):
         b1 = FakeBuilding(1, (0, 0))
@@ -151,7 +151,7 @@ class NetworkTests(unittest.TestCase):
         link = self.gen_link(b3, b1)
         #We must reverse the link because the antenna must be added on the dst, not the src
         self.n.add_link_generic(link, reverse=True)
-        assert(len(self.n.graph.nodes[3]['antennas']) == 2)
+        assert(len(self.n.graph.nodes[3]['node']) == 2)
         for e in self.n.graph.out_edges(3, data=True):
             if e[1] in [1, 4]:
                 self.assertEqual(e[2]['link_per_antenna'], 4)

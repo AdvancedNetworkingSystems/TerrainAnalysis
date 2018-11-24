@@ -6,7 +6,8 @@ import argparse
 import time
 from antenna import Antenna
 import code
-from antennas import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
+from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
+
 
 class Growing_network(CN_Generator):
 

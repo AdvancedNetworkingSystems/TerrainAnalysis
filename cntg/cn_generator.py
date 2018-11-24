@@ -306,7 +306,7 @@ class CN_Generator():
         max_event = max(nx.get_node_attributes(self.net.graph, 'event').values())
         for node in self.net.graph.nodes(data=True):
             (lat, lon) = node[1]['pos']
-            label="Node: %d<br>Antennas:<br> %s" % (node[0], node[1]['antennas'])
+            label="Node: %d<br>Antennas:<br> %s" % (node[0], node[1]['node'])
             opacity = node[1]['event']/max_event
             if node[0] == self.net.gateway:
                 folium.Marker([lon, lat],
