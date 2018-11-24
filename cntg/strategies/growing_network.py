@@ -54,25 +54,18 @@ class Growing_network(CN_Generator):
         
         link_in_viewshed = [link for link in visible_links
                             if src_ant.check_node_vis(link['src_orient'])]
-        while link_in_viewshed:
+        link_in_viewshed.sort(key=lambda x: x['loss'], reverse=True)
+        link_added = 0
+        while link_in_viewshed and link_added < self.V:
             link = link_in_viewshed.pop()
             visible_links.remove(link)  # remove it from visible_links af
             try:
                 self.add_link(link, reverse=True)
             except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
                 print(e.msg)
+            else:
+                link_added +=1
 
-        # add the remaining links to a list of feasible links for edgeffect
-        self.feasible_links += visible_links
-        return True
-        
-        
-        # link_in_viewshed = [link for link in visible_links
-        #                     if src_ant.check_node_vis(link['src_orient'])]
-        # while link_in_viewshed:
-        #     link = link_in_viewshed.pop()
-        #     visible_links.remove(link)  # remove it from visible_links af
-        #     self.add_link(link, existing_antenna=src_ant)
         # add the remaining links to a list of feasible links for edgeffect
         self.feasible_links += visible_links
         return True

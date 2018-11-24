@@ -60,8 +60,9 @@ class CN_Generator():
                 "(in Mbps). Ex: '1 0' will stop when any node has less than 1Mbps",
                 type=float, default=[1, 0], nargs=2)
         self.parser.add_argument('-R', help="restructure with edgeffect every r"
-                " rounds, adding l links. Accepts two arguments: r l", 
-                                 nargs=2, type=int)
+                " rounds, adding l links. Accepts two arguments: r l",)
+        self.parser.add_argument('-V', help="Add at most v links extra link if"
+                "these are in the viewshed of the current one.", type=int, default=0)
         self.args = self.parser.parse_args(unk_args)
         self.n = self.args.n
         self.e = self.args.e
@@ -69,6 +70,7 @@ class CN_Generator():
         self.P = self.args.P
         self.B = self.args.B
         self.R = self.args.R
+        self.V = self.args.V
         self.random_seed = self.args.r
         self.debug_file = None
         random.seed(self.random_seed)
