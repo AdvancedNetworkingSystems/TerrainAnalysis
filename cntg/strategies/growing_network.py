@@ -58,7 +58,7 @@ class Growing_network(CN_Generator):
             link = link_in_viewshed.pop()
             visible_links.remove(link)  # remove it from visible_links af
             try:
-                self.add_link(link, existing=True)
+                self.add_link(link, reverse=True)
             except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
                 print(e.msg)
 

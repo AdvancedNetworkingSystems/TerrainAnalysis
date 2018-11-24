@@ -1,18 +1,23 @@
 from shapely.geometry import Point, Polygon
 import ubiquiti as ubnt
+import uuid
 
 
 class Antenna:
-    def __init__(self, device, orientation, channel):
+    def __init__(self, device, orientation, channel=None):
         self.orientation = orientation
         self.ubnt_device = device
         self.channel = channel
         self.device = ubnt.read_device(device[0])
         self.beamwidth = (self.device['beamwidth_az'], self.device['beamwidth_el'])
         self.set_beamwidth_area()
+        self.id = uuid.uuid4()
+
+    def __repr__(self):
+        return('(' + str(self) + ')')
 
     def __str__(self):
-        return "%f+/-%f, %s, %dMhz" %(self.orientation[0], self.beamwidth[0]/2, self.ubnt_device[0], self.channel)
+        return "%s %f+/-%f, %s, %dMhz" % (self.id, self.orientation[0], self.beamwidth[0] / 2, self.ubnt_device[0], self.channel)
 
     def set_beamwidth_area(self):
         self.az_area = ((self.orientation[0] - self.beamwidth[0] / 2) % 360, (self.orientation[0] + self.beamwidth[0] / 2) % 360)
