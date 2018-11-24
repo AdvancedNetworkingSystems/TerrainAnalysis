@@ -2,6 +2,7 @@ import wifi
 import ubiquiti as ubnt
 import random
 from antenna import Antenna
+node_fixed_cost = 200
 
 
 class AntennasExahustion(Exception):
@@ -24,6 +25,12 @@ class Antennas:
         self.antennas = []
         self.max_ant = max_ant
         self.free_channels = wifi.channels[:]
+
+    def cost(self):
+        cost = node_fixed_cost
+        for a in self.antennas:
+            cost += a.device['average_price']
+        return cost
 
     def __repr__(self):
         return(str(self))

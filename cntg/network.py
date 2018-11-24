@@ -5,7 +5,6 @@ import ubiquiti as ubnt
 import numpy
 import wifi
 import random
-node_fixed_cost = 200
 
 
 def compute_link_quality(left, right, attrs, min_rate=6):
@@ -39,13 +38,13 @@ class Network():
         self.gateway = building.gid
 
     def add_node(self, building, attrs={}):
-        self.graph.add_node(building.gid, pos=building.xy(), antennas=Antennas(self.max_dev),
-                            cost=node_fixed_cost, **attrs)
-        self.cost += node_fixed_cost
+        self.graph.add_node(building.gid,
+                            pos=building.xy(),
+                            antennas=Antennas(self.max_dev),
+                            **attrs)
 
     def del_node(self, building):
         self.graph.remove_node(building.gid)
-        self.cost -= node_fixed_cost
 
     def update_sharing_factor(self, link, dst_antenna=None, src_antenna=None):
         degree = 2
@@ -252,7 +251,10 @@ class Network():
         percentiles = [10, 50, 90]
         for perc in percentiles:
             metrics["perc_"+str(perc)] = ""
-
+        # Calculate costo of network
+        self.cost = 0
+        for n in self.graph.nodes(data=True):
+            self.cost += n[1]['antennas'].cost()
         counter = 1
         per_i = 0
         for d, b in sorted(min_bandwidth.items(), key=lambda x: x[1]):
