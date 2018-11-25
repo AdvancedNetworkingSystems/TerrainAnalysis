@@ -5,6 +5,7 @@ import ubiquiti as ubnt
 import numpy
 import wifi
 import random
+from collections import Counter, defaultdict
 
 
 def compute_link_quality(left, right, attrs, min_rate=6):
@@ -200,6 +201,8 @@ class Network():
         for edge in self.graph.edges():
             del self.graph.edges[edge]['src_ant']
             del self.graph.edges[edge]['dst_ant']
+            del self.graph.edges[edge]['src_orient']
+            del self.graph.edges[edge]['dst_orient']
         nx.write_graphml(self.graph, filename)
 
 
@@ -207,23 +210,29 @@ class Network():
 # --- METRICS ---
     def compute_minimum_bandwidth(self):
         min_bandwidth = {}
+        paths = defaultdict(list)
+        paths_per_edge = Counter()
         for d in self.graph.nodes():
             if d == self.gateway:
                 continue
             try:
-                rev_path = nx.dijkstra_path(self.graph, d,
-                                            self.gateway,
-                                            weight=compute_link_quality)
+                path = nx.dijkstra_path(self.graph, d,
+                                        self.gateway,
+                                        weight=compute_link_quality)
             except nx.exception.NetworkXNoPath:
                 continue
-            min_b = float('inf')
-            for i in range(len(rev_path) - 1):
-                attrs = self.graph.get_edge_data(rev_path[i], rev_path[i + 1])
-                b = attrs['rate'] / attrs['link_per_antenna']
-                if b < min_b:
-                    min_b = b
-            self.graph.node[d]['min_bw'] = min_b
-            min_bandwidth[d] = min_b
+            for i in range(len(path)-1):
+                paths_per_edge[(path[i], path[i+1])] += 1
+                paths[d].append((path[i], path[i+1]))
+        for d in paths:
+            min_bw = float('inf')
+            for e in paths[d]:
+                g_e = self.graph[e[0]][e[1]]
+                bw = g_e['rate'] / (g_e['link_per_antenna'] * paths_per_edge[e])
+                if bw < min_bw:
+                    min_bw = bw
+            self.graph.node[d]['min_bw'] = min_bw
+            min_bandwidth[d] = min_bw
         return min_bandwidth
 
     def compute_equivalent_connectivity(self):

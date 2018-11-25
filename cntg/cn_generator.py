@@ -40,8 +40,8 @@ class CN_Generator():
         self.net = network.Network()
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-D", help="debug: print metrics at each iteration"
-                                 " and save metrics in the given debug file",
-                                 nargs='?', default="", const="")
+                                 " and save metrics in the './data' folder",
+                                 action='store_true')
         self.parser.add_argument("-P", help="number of parallel processes",
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
@@ -55,10 +55,13 @@ class CN_Generator():
                                  default=30000)
         self.parser.add_argument('-r', help="random seed,", type=int,
                                  default=1)
-        self.parser.add_argument('-B', help="Accepts two arguments: bw frac."
-                "Stop when a fraction of frac nodes has less than bw bandwidth"
-                "(in Mbps). Ex: '1 0' will stop when any node has less than 1Mbps",
-                type=float, default=[1, 0], nargs=2)
+        self.parser.add_argument('-B', help="Accepts three arguments: bw frac min_n."
+                "Stop when a fraction of frac nodes has less than bw bandwidth. "
+                "Start measuring after min_n nodes (initially things may behave strangely "
+                "(in Mbps). Ex: '1 0 1' will stop when any node has less than 1Mbps "
+                "(in Mbps). Ex: '5 0.15 10' will stop when 15% of nodes has less than 5Mbps "
+                "but not before we have at least 10 nodes",
+                type=float, default=[1, 0, 1], nargs=3)
         self.parser.add_argument('-R', help="restructure with edgeffect every r"
                 " rounds, adding l links. Accepts two arguments: r l",)
         self.parser.add_argument('-V', help="Add at most v links extra link if"
@@ -76,6 +79,14 @@ class CN_Generator():
         random.seed(self.random_seed)
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
+        self.datafolder = "./data/"
+        self.graphfolder = "./graph/"
+        self.mapfolder = "./map/"
+        for f in [self.datafolder, self.graphfolder, self.mapfolder]:
+            os.makedirs(f, exist_ok=True)
+        self.filename = "%s-%s-%d-%s_%s-%d"\
+                        % (args.d, self.n, int(self.e), self.b[0], 
+                           self.b[1], time.time())
         if not DSN:
             self.t = terrain(self.DSN, dataset, ple=2.4, processes=self.P)
         else:
@@ -123,14 +134,16 @@ class CN_Generator():
 
     def stop_condition_minbw(self, rounds=1):
         #in case you don't want to test the stop condition every round
-        if len(self.infected) % rounds != 0:
+        if len(self.infected) % rounds != 0 or\
+                len(self.infected) < self.B[2]:
+            self.below_bw_nodes = '-'
             return False
+        self.below_bw_nodes = 0
 
         # recompute minimum bw at each node
         bw = self.B[0]
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
-        self.below_bw_nodes = 0
         for n in self.infected:
             if n == self.net.gateway:
                 continue
@@ -167,7 +180,7 @@ class CN_Generator():
                     self.get_susceptibles()
                     self.restructure()
                     print("Number of nodes:%d, infected:%d, susceptible:%d, "
-                          "Nodes below bw:%d"
+                          "Nodes below bw:%s"
                           % (self.net.size(), len(self.infected),
                              len(self.susceptible), self.below_bw_nodes))
                     if self.args.D and len(self.net.graph) > 2:
@@ -183,11 +196,12 @@ class CN_Generator():
         for k, v in self.net.compute_metrics().items():
             print(k, v)
         if self.args.plot:
-            self.save_evolution()
-            self.plot_map()
-            print("A browsable map was saved in " + self.map_file)
-            print("A browsable animated map was saved in " +
-                  self.animation_file)
+            animationfile = self.save_evolution()
+            mapfile = self.plot_map()
+            graphfile = self.save_graph()
+            print("A browsable map was saved in " + mapfile)
+            print("A browsable animated map was saved in " + animationfile)
+            print("A graphml was saved in " + graphfile)
         if self.debug_file:
             self.debug_file.close()#close(self.f)
 
@@ -232,7 +246,9 @@ class CN_Generator():
                                          reverse=reverse)
 
     def save_graph(self):
-        self.net.save_graph(self.filename)
+        graphname = self.graphfolder + "graph-" + self.filename + ".graphml"
+        self.net.save_graph(graphname)
+        return graphname
 
     def graph_to_animation(self):
         quasi_centroid = self.t.polygon_area.representative_point()
@@ -306,7 +322,12 @@ class CN_Generator():
         max_event = max(nx.get_node_attributes(self.net.graph, 'event').values())
         for node in self.net.graph.nodes(data=True):
             (lat, lon) = node[1]['pos']
-            label="Node: %d<br>Antennas:<br> %s" % (node[0], node[1]['node'])
+            try:
+                label="Node: %d<br>Antennas:<br> %s<br> min_bw: %s" %\
+                      (node[0], node[1]['node'], node[1]['min_bw'])
+            except KeyError:
+                label="Node: %d<br>Antennas:<br> %s<br>" %\
+                    (node[0], node[1]['node'])
             opacity = node[1]['event']/max_event
             if node[0] == self.net.gateway:
                 folium.Marker([lon, lat],
@@ -331,22 +352,21 @@ class CN_Generator():
 
     def plot_map(self):
         self.graph_to_leaflet()
-        self.map_file = '/tmp/index.html'
-        self.map.save(self.map_file)
+        mapname = self.mapfolder + "map-" + self.filename + ".html"
+        self.map.save(mapname)
+        return mapname
 
     def save_evolution(self):
         self.graph_to_animation()
-        self.animation_file = '/tmp/index-animation.html'
-        self.animation.save(self.animation_file)
+        mapname = self.mapfolder + "map-" + self.filename + "-animation.html"
+        self.animation.save(mapname)
+        return mapname
 
     def print_metrics(self):
         m = self.net.compute_metrics()
         if not self.debug_file:
-            folder = "./data/"
-            os.makedirs(folder, exist_ok=True)
-            filename = folder + self.args.D + \
-                       datetime.datetime.now().strftime("_%h_%d_%H_%M") + ".log"
-            self.debug_file = open(filename, "w+")
+            dataname = self.datafolder + "data-" + self.filename + ".txt"
+            self.debug_file = open(dataname, "w+")
             header_line = "#" + str(self.args)
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)
