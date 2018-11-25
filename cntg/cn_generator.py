@@ -40,8 +40,8 @@ class CN_Generator():
         self.net = network.Network()
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-D", help="debug: print metrics at each iteration"
-                                 " and save metrics in the given debug file",
-                                 nargs='?', default="", const="")
+                                 " and save metrics in the './data' folder",
+                                 action='store_true')
         self.parser.add_argument("-P", help="number of parallel processes",
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
@@ -76,6 +76,14 @@ class CN_Generator():
         random.seed(self.random_seed)
         self.net.set_maxdev(args.max_dev)
         self.parser.set_defaults(plot=False)
+        self.datafolder = "./data/"
+        self.graphfolder = "./graph/"
+        self.mapfolder = "./map/"
+        for f in [self.datafolder, self.graphfolder, self.mapfolder]:
+            os.makedirs(f, exist_ok=True)
+        self.filename = "%s-%s-%d-%s_%s-%d"\
+                        % (args.d, self.n, int(self.e), self.b[0], 
+                           self.b[1], time.time())
         if not DSN:
             self.t = terrain(self.DSN, dataset, ple=2.4, processes=self.P)
         else:
@@ -183,12 +191,12 @@ class CN_Generator():
         for k, v in self.net.compute_metrics().items():
             print(k, v)
         if self.args.plot:
-            self.save_evolution()
-            self.plot_map()
-            self.net.save_graph('/tmp/g.graphml')
-            print("A browsable map was saved in " + self.map_file)
-            print("A browsable animated map was saved in " +
-                  self.animation_file)
+            animationfile = self.save_evolution()
+            mapfile = self.plot_map()
+            graphfile = self.save_graph()
+            print("A browsable map was saved in " + mapfile)
+            print("A browsable animated map was saved in " + animationfile)
+            print("A graphml was saved in " + graphfile)
         if self.debug_file:
             self.debug_file.close()#close(self.f)
 
@@ -233,7 +241,9 @@ class CN_Generator():
                                          reverse=reverse)
 
     def save_graph(self):
-        self.net.save_graph(self.filename)
+        graphname = self.graphfolder + "graph-" + self.filename + ".graphml"
+        self.net.save_graph(graphname)
+        return graphname
 
     def graph_to_animation(self):
         quasi_centroid = self.t.polygon_area.representative_point()
@@ -337,22 +347,21 @@ class CN_Generator():
 
     def plot_map(self):
         self.graph_to_leaflet()
-        self.map_file = '/tmp/index.html'
-        self.map.save(self.map_file)
+        mapname = self.mapfolder + "map-" + self.filename + ".html"
+        self.map.save(mapname)
+        return mapname
 
     def save_evolution(self):
         self.graph_to_animation()
-        self.animation_file = '/tmp/index-animation.html'
-        self.animation.save(self.animation_file)
+        mapname = self.mapfolder + "map-" + self.filename + "-animation.html"
+        self.animation.save(mapname)
+        return mapname
 
     def print_metrics(self):
         m = self.net.compute_metrics()
         if not self.debug_file:
-            folder = "./data/"
-            os.makedirs(folder, exist_ok=True)
-            filename = folder + self.args.D + \
-                       datetime.datetime.now().strftime("_%h_%d_%H_%M") + ".log"
-            self.debug_file = open(filename, "w+")
+            dataname = self.datafolder + "data-" + self.filename + ".txt"
+            self.debug_file = open(dataname, "w+")
             header_line = "#" + str(self.args)
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)

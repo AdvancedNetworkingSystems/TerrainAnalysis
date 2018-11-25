@@ -16,8 +16,6 @@ class Growing_network(CN_Generator):
         CN_Generator.__init__(self, args.d, DSN=None, args=args,
                               unk_args=unk_args)
         self.feasible_links = []
-        self.filename = "graph-%s-%s-%d-%s-%d.graphml"\
-                        % (args.d, self.n, int(self.e), self.b, time.time())
         self._post_init()
 
     def stop_condition(self):
