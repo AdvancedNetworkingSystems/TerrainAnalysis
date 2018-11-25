@@ -203,7 +203,6 @@ class Network():
         nx.write_graphml(self.graph, filename)
 
 
-
 # --- METRICS ---
     def compute_minimum_bandwidth(self):
         min_bandwidth = {}

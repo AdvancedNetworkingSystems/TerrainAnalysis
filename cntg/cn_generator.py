@@ -192,7 +192,6 @@ class CN_Generator():
             killtree(pid)
             pass
         # save result
-        min_b = self.net.compute_minimum_bandwidth()
         for k, v in self.net.compute_metrics().items():
             print(k, v)
         if self.args.plot:
@@ -203,7 +202,17 @@ class CN_Generator():
             print("A browsable animated map was saved in " + animationfile)
             print("A graphml was saved in " + graphfile)
         if self.debug_file:
-            self.debug_file.close()#close(self.f)
+    
+            dataname = self.datafolder + "data-" + self.filename + ".txt"
+            with open(dataname, "w+") as f: 
+                header_line = "# node, min_bw" 
+                print(header_line, file=f)
+                min_b = self.net.compute_minimum_bandwidth()
+                for n, b in sorted(min_b.items(), key = lambda x: x[1]):
+                    print(n, "," ,  b, file=f)
+                print("A data file was saved in " + dataname)
+
+            self.debug_file.close()
 
     def restructure_edgeeffect_mt(self, num_links=1):
         # run only every self.args.R[0] nodes added
@@ -365,14 +374,13 @@ class CN_Generator():
     def print_metrics(self):
         m = self.net.compute_metrics()
         if not self.debug_file:
-            dataname = self.datafolder + "data-" + self.filename + ".txt"
-            self.debug_file = open(dataname, "w+")
+            statsname = self.datafolder + "stats-" + self.filename + ".txt"
+            self.debug_file = open(statsname, "w+")
             header_line = "#" + str(self.args)
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)
         print(len(self.net.graph), ",",  ",".join(map(str, m.values())), 
               file=self.debug_file)
-
 
 
 def killtree(pid, including_parent=False):
