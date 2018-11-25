@@ -111,8 +111,6 @@ class Network():
     NB: source must be a new node without antennas
     '''
     def _add_link(self, link, attrs={}):
-        if link['dst'].gid == 923713:
-            import pdb; pdb.set_trace()
         # Search if there's an antenna usable at the destination
         dst_antennas = self.graph.nodes[link['dst'].gid]['node']
         dst_ant = dst_antennas.get_best_dst_antenna(link)
