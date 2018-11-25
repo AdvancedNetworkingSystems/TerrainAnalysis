@@ -74,7 +74,7 @@ class NetworkTests(unittest.TestCase):
             self.assertEqual(len(n[1]['node']), 1)
         for e in self.n.graph.out_edges(2, data=True):
             self.assertEqual(e[2]['link_per_antenna'], 4)
-
+            self.assertEqual(len(e[2]['interfering_links']), 4)
 
     def test_twolink_lind_viewshed(self):
         b1 = FakeBuilding(1, (0, 0))
