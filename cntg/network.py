@@ -47,39 +47,48 @@ class Network():
     def del_node(self, building):
         self.graph.remove_node(building.gid)
 
-    def update_sharing_factor(self, link, dst_antenna=None, src_antenna=None):
-        degree = 2
+    def update_interfering_links(self, link, dst_antenna=None, src_antenna=None):
+        interfering_links = []
+        degree = 0
         # calculate the number of link wrt the 2 antennas
         if dst_antenna:
             for l in self.graph.out_edges(link['dst'].gid, data=True):
                 if l[2]['src_ant'] == dst_antenna:
+                    interfering_links.append(l)
                     degree += 1
             for l in self.graph.in_edges(link['dst'].gid, data=True):
                 if l[2]['dst_ant'] == dst_antenna:
+                    interfering_links.append(l)
                     degree += 1
         if src_antenna:
             for l in self.graph.out_edges(link['src'].gid, data=True):
                 if l[2]['dst_ant'] == src_antenna:
+                    interfering_links.append(l)
                     degree += 1
             for l in self.graph.in_edges(link['src'].gid, data=True):
                 if l[2]['src_ant'] == src_antenna:
+                    interfering_links.append(l)
                     degree += 1
         # set it to the attribute
         if src_antenna:
             for l in self.graph.out_edges(link['src'].gid, data=True):
                 if l[2]['dst_ant'] == src_antenna:
+                    l[2]['interfering_links'] = interfering_links
                     l[2]['link_per_antenna'] = degree
             for l in self.graph.in_edges(link['src'].gid, data=True):
                 if l[2]['src_ant'] == src_antenna:
+                    l[2]['interfering_links'] = interfering_links
                     l[2]['link_per_antenna'] = degree
         if dst_antenna:
             for l in self.graph.out_edges(link['dst'].gid, data=True):
                 if l[2]['src_ant'] == dst_antenna:
+                    l[2]['interfering_links'] = interfering_links
                     l[2]['link_per_antenna'] = degree
             for l in self.graph.in_edges(link['dst'].gid, data=True):
                 if l[2]['dst_ant'] == dst_antenna:
+                    l[2]['interfering_links'] = interfering_links
                     l[2]['link_per_antenna'] = degree
-        return degree
+
 
     def add_link_generic(self, link, attrs={}, reverse=False, existing=False):
         result = None
@@ -112,7 +121,6 @@ class Network():
                                            orientation=link['src_orient'],
                                            device=dst_ant.ubnt_device,
                                            channel=dst_ant.channel)
-        link_per_antenna = self.update_sharing_factor(link, src_antenna=src_ant, dst_antenna=dst_ant) 
         # print("Added link from %s to %s oriented %s, %s" % (link['src'].gid, link['dst'].gid, link['src_orient'], link['dst_orient']))
         # print("src_ant %s, dst_ant %s"%(src_ant, dst_ant))
         # Now there are 2 devices, calculate the rates
@@ -128,7 +136,6 @@ class Network():
                             src_orient=link['src_orient'],
                             dst_orient=link['dst_orient'],
                             rate=src_rate,
-                            link_per_antenna=link_per_antenna,
                             **attrs)
 
         self.graph.add_edge(link['dst'].gid,
@@ -139,8 +146,8 @@ class Network():
                             src_orient=link['dst_orient'],
                             dst_orient=link['src_orient'],
                             rate=dst_rate,
-                            link_per_antenna=link_per_antenna,
                             **attrs)
+        self.update_interfering_links(link, src_antenna=src_ant, dst_antenna=dst_ant) 
         return src_ant
 
     def _add_link_existing(self, link, attrs={}):
@@ -156,8 +163,6 @@ class Network():
         # Since we want to add capacity to the network we always add new antennas
         dst_ant = dst_antennas.add_antenna(loss=link['loss'], orientation=link['dst_orient'], channel=channel)
         src_ant = src_antennas.add_antenna(loss=link['loss'], orientation=link['dst_orient'], channel=channel, device=dst_ant.ubnt_device)
-        
-        link_per_antenna = self.update_sharing_factor(link, src_antenna=src_ant, dst_antenna=dst_ant)  # TODO: check it
 
         src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
                                                    src_ant.ubnt_device[0],
@@ -171,7 +176,6 @@ class Network():
                             rate=src_rate,
                             dst_orient=link['dst_orient'],
                             src_orient=link['src_orient'],
-                            link_per_antenna=link_per_antenna,
                             **attrs)
 
         self.graph.add_edge(link['dst'].gid,
@@ -182,10 +186,9 @@ class Network():
                             src_orient=link['dst_orient'],
                             dst_orient=link['src_orient'],
                             rate=dst_rate,
-                            link_per_antenna=link_per_antenna,
                             **attrs)
+        self.update_interfering_links(link, src_antenna=src_ant, dst_antenna=dst_ant)
         return src_ant
-
 
     def save_graph(self, filename):
         self.compute_minimum_bandwidth()
