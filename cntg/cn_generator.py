@@ -55,10 +55,13 @@ class CN_Generator():
                                  default=30000)
         self.parser.add_argument('-r', help="random seed,", type=int,
                                  default=1)
-        self.parser.add_argument('-B', help="Accepts two arguments: bw frac."
-                "Stop when a fraction of frac nodes has less than bw bandwidth"
-                "(in Mbps). Ex: '1 0' will stop when any node has less than 1Mbps",
-                type=float, default=[1, 0], nargs=2)
+        self.parser.add_argument('-B', help="Accepts three arguments: bw frac min_n."
+                "Stop when a fraction of frac nodes has less than bw bandwidth. "
+                "Start measuring after min_n nodes (initially things may behave strangely "
+                "(in Mbps). Ex: '1 0 1' will stop when any node has less than 1Mbps "
+                "(in Mbps). Ex: '5 0.15 10' will stop when 15% of nodes has less than 5Mbps "
+                "but not before we have at least 10 nodes",
+                type=float, default=[1, 0, 1], nargs=3)
         self.parser.add_argument('-R', help="restructure with edgeffect every r"
                 " rounds, adding l links. Accepts two arguments: r l",)
         self.parser.add_argument('-V', help="Add at most v links extra link if"
@@ -131,14 +134,16 @@ class CN_Generator():
 
     def stop_condition_minbw(self, rounds=1):
         #in case you don't want to test the stop condition every round
-        if len(self.infected) % rounds != 0:
+        if len(self.infected) % rounds != 0 or\
+                len(self.infected) < self.B[2]:
+            self.below_bw_nodes = '-'
             return False
+        self.below_bw_nodes = 0
 
         # recompute minimum bw at each node
         bw = self.B[0]
         self.net.compute_minimum_bandwidth()
         # if the minimum bw of a node is less than the treshold stop
-        self.below_bw_nodes = 0
         for n in self.infected:
             if n == self.net.gateway:
                 continue
@@ -175,7 +180,7 @@ class CN_Generator():
                     self.get_susceptibles()
                     self.restructure()
                     print("Number of nodes:%d, infected:%d, susceptible:%d, "
-                          "Nodes below bw:%d"
+                          "Nodes below bw:%s"
                           % (self.net.size(), len(self.infected),
                              len(self.susceptible), self.below_bw_nodes))
                     if self.args.D and len(self.net.graph) > 2:
