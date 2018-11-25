@@ -185,6 +185,7 @@ class CN_Generator():
         if self.args.plot:
             self.save_evolution()
             self.plot_map()
+            self.net.save_graph('/tmp/g.graphml')
             print("A browsable map was saved in " + self.map_file)
             print("A browsable animated map was saved in " +
                   self.animation_file)
@@ -306,7 +307,12 @@ class CN_Generator():
         max_event = max(nx.get_node_attributes(self.net.graph, 'event').values())
         for node in self.net.graph.nodes(data=True):
             (lat, lon) = node[1]['pos']
-            label="Node: %d<br>Antennas:<br> %s" % (node[0], node[1]['node'])
+            try:
+                label="Node: %d<br>Antennas:<br> %s<br> min_bw: %s" %\
+                      (node[0], node[1]['node'], node[1]['min_bw'])
+            except KeyError:
+                label="Node: %d<br>Antennas:<br> %s<br>" %\
+                    (node[0], node[1]['node'])
             opacity = node[1]['event']/max_event
             if node[0] == self.net.gateway:
                 folium.Marker([lon, lat],
