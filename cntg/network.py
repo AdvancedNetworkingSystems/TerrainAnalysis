@@ -201,6 +201,10 @@ class Network():
             del self.graph.edges[edge]['dst_ant']
             del self.graph.edges[edge]['src_orient']
             del self.graph.edges[edge]['dst_orient']
+            try:
+                del self.graph.edges[edge]['interfering_links']
+            except KeyError:
+                pass
         nx.write_graphml(self.graph, filename)
 
 
@@ -208,7 +212,7 @@ class Network():
     def compute_minimum_bandwidth(self):
         min_bandwidth = {}
         paths = defaultdict(list)
-        paths_per_edge = Counter()
+        paths_per_edge = Counter()  # how many SPs pass through an edge
         for d in self.graph.nodes():
             if d == self.gateway:
                 continue
@@ -225,7 +229,36 @@ class Network():
             min_bw = float('inf')
             for e in paths[d]:
                 g_e = self.graph[e[0]][e[1]]
-                bw = g_e['rate'] / (g_e['link_per_antenna'] * paths_per_edge[e])
+                # interfereing links = all the links that share an antenna with
+                # this link
+                try:
+                    intf_links = g_e['interfering_links']
+                except KeyError:
+                    intf_links = []
+
+                intf_number = 1
+                # the achievable rate on a link e is given by the maximum
+                # bit rate divided by the number of interfering links that
+                # have at least one shortest path passing through them.
+                # If an interfering link is not used by any shortest path, we
+                # don't count it.
+                for l in intf_links:
+                    if (l[0], l[1]) in paths_per_edge:
+                        intf_number += 1
+                bw = g_e['rate'] / (intf_number * paths_per_edge[e])
+                # the bottleneck is given by the achievable bandwidth/number
+                # of shortest path passing through the link
+                # Example:
+                #       1----2----3---GW
+                #                 |
+                #                 |
+                #                 4
+                #  2->3 and 4->3 share the same radio and have max rate 100
+                #  then the achievable rate on 2->3 and 4->3 is 100/2 and the
+                #  bottleneck link for node 1 is 2->3 whose bandwidth is
+                #  (100/2)/2: the maximum bandwidth in the link, divided by the
+                #  number of SPs passing through it (1->GW and 2->GW)
+
                 if bw < min_bw:
                     min_bw = bw
             self.graph.node[d]['min_bw'] = min_bw
