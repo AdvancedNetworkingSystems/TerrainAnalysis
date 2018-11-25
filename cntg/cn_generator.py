@@ -194,13 +194,6 @@ class CN_Generator():
         # save result
         for k, v in self.net.compute_metrics().items():
             print(k, v)
-        if self.args.plot:
-            animationfile = self.save_evolution()
-            mapfile = self.plot_map()
-            graphfile = self.save_graph()
-            print("A browsable map was saved in " + mapfile)
-            print("A browsable animated map was saved in " + animationfile)
-            print("A graphml was saved in " + graphfile)
         if self.debug_file:
     
             dataname = self.datafolder + "data-" + self.filename + ".txt"
@@ -213,6 +206,13 @@ class CN_Generator():
                 print("A data file was saved in " + dataname)
 
             self.debug_file.close()
+        if self.args.plot:
+            animationfile = self.save_evolution()
+            mapfile = self.plot_map()
+            graphfile = self.save_graph()
+            print("A browsable map was saved in " + mapfile)
+            print("A browsable animated map was saved in " + animationfile)
+            print("A graphml was saved in " + graphfile)
 
     def restructure_edgeeffect_mt(self, num_links=1):
         # run only every self.args.R[0] nodes added

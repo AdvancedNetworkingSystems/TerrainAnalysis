@@ -5,6 +5,7 @@ import ubiquiti as ubnt
 import numpy
 import wifi
 import random
+import datetime
 from collections import Counter, defaultdict
 
 
@@ -323,4 +324,5 @@ class Network():
                                                      for _, _, d in
                                                      self.graph.edges(
                                                      data=True)])
+        metrics["time_passed"] = datetime.datetime.now()
         return metrics
