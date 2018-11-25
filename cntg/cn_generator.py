@@ -18,6 +18,7 @@ import multiprocessing as mp
 import os
 import psutil
 import datetime
+import wifi
 
 def poor_mans_color_gamma(bitrate):
     blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
@@ -66,6 +67,9 @@ class CN_Generator():
                 " rounds, adding l links. Accepts two arguments: r l",)
         self.parser.add_argument('-V', help="Add at most v links extra link if"
                 "these are in the viewshed of the current one.", type=int, default=0)
+        self.parser.add_argument("-C", help="802.11 channel width",
+                        choices=[20,40,80,160], default=20, type=int)
+
         self.args = self.parser.parse_args(unk_args)
         self.n = self.args.n
         self.e = self.args.e
@@ -74,6 +78,8 @@ class CN_Generator():
         self.B = self.args.B
         self.R = self.args.R
         self.V = self.args.V
+        wifi.default_channel_width = self.args.C
+
         self.random_seed = self.args.r
         self.debug_file = None
         random.seed(self.random_seed)
