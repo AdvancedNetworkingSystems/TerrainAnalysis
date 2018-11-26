@@ -4,11 +4,12 @@ from shapely.geometry.polygon import Polygon
 from shapely.geometry import Point
 from multiprocessing import Pool
 from misc import NoGWError
+from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
 import shapely
 import random
 import time
 import networkx as nx
-import argparse
+import configargparse
 import network
 import folium
 from folium import plugins
@@ -32,9 +33,7 @@ def poor_mans_color_gamma(bitrate):
 
 class CN_Generator():
 
-    DSN = "postgresql://dbreader@192.168.160.11/terrain_ans"
-
-    def __init__(self, dataset, DSN=None, args={}, unk_args={}):
+    def __init__(self, args={}, unk_args={}):
         self.round = 0
         self.infected = {}
         self.susceptible = set()
@@ -42,65 +41,83 @@ class CN_Generator():
         self.net = network.Network()
         with open("gws.yml", "r") as gwf:
             self.gwd = yaml.load(gwf)
-        self.parser = argparse.ArgumentParser()
+        self.parser = configargparse.get_argument_parser()
+        self.parser.add_argument("-d", "--dataset",
+                                 help="a data set from the available ones",
+                                 required=True)
+        self.parser.add_argument("--max_dev",
+                                 help="maximum number of devices per node",
+                                 type=int, const=float('inf'), nargs='?',
+                                 default=float('inf'))
         self.parser.add_argument("-D", help="debug: print metrics at each iteration"
                                  " and save metrics in the './data' folder",
                                  action='store_true')
-        self.parser.add_argument("-P", help="number of parallel processes",
+        self.parser.add_argument("-P", "--processes", help="number of parallel processes",
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
+<<<<<<< HEAD
         self.parser.add_argument('-b', help="gateway number in [0,n] from gws.yml",
                                  type=int, default=0)
         self.parser.add_argument('-n', help="number of nodes", type=int)
         self.parser.add_argument('-e', help="expansion range (in meters),"
+=======
+        self.parser.add_argument('-g', "--gateway", help="gateway number in [0,n] from gws.yml",
+                                 type=int, required=True)
+        self.parser.add_argument('-n', "--max_size", help="number of nodes", type=int)
+        self.parser.add_argument('-e', "--expansion", help="expansion range (in meters),"
+>>>>>>> 3706f7b524a0010aabf1ad947846177ecfaad815
                                  " defaults to buildings at 30km", type=float,
                                  default=30000)
-        self.parser.add_argument('-r', help="random seed,", type=int)
-        self.parser.add_argument('-B', help="Accepts three arguments: bw frac min_n."
+        self.parser.add_argument('-r', "--seed", help="random seed,", type=int)
+        self.parser.add_argument('-B', "--bandwidth", help="Accepts three arguments: bw frac min_n."
                 "Stop when a fraction of frac nodes has less than bw bandwidth. "
                 "Start measuring after min_n nodes (initially things may behave strangely "
                 "(in Mbps). Ex: '1 0 1' will stop when any node has less than 1Mbps "
                 "(in Mbps). Ex: '5 0.15 10' will stop when 15% of nodes has less than 5Mbps "
                 "but not before we have at least 10 nodes",
-                type=float, default=[1, 0, 1], nargs=3)
-        self.parser.add_argument('-R', help="restructure with edgeffect every r"
+                default="1 0 1")
+        self.parser.add_argument('-R', "--restructure", help="restructure with edgeffect every r"
                 " rounds, adding l links. Accepts two arguments: r l",)
-        self.parser.add_argument('-V', help="Add at most v links extra link if"
+        self.parser.add_argument('-V', "--viewshed_extra", help="Add at most v links extra link if"
                 "these are in the viewshed of the current one.", type=int, default=0)
-        self.parser.add_argument("-C", help="802.11 channel width",
+        self.parser.add_argument("-C", "--channel_width", help="802.11 channel width",
                         choices=[20,40,80,160], default=20, type=int)
+        self.parser.add_argument("--dsn", help="DSN to for the connection to PostGIS", required=True)
+        self.parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
 
         self.args = self.parser.parse_args(unk_args)
-        self.n = self.args.n
-        self.e = self.args.e
-        self.b = self.args.b
-        self.P = self.args.P
-        self.B = self.args.B
-        self.R = self.args.R
-        self.V = self.args.V
-        self.dataset = dataset
-        wifi.default_channel_width = self.args.C
-        if not self.args.r:
+        self.n = self.args.max_size
+        self.e = self.args.expansion
+        self.b = self.args.gateway
+        self.P = self.args.processes
+        if self.args.bandwidth:
+            self.B = tuple(map(float, self.args.bandwidth.split(' ')))
+        if self.args.restructure:
+            self.R = tuple(map(int, self.args.restructure.split(' ')))
+        self.V = self.args.viewshed_extra
+        self.dataset = self.args.dataset
+        wifi.default_channel_width = self.args.channel_width
+        if not self.args.seed:
             self.random_seed = random.randint(1, 10000)
         else:
-            self.random_seed = self.args.r
+            self.random_seed = self.args.seed
         self.debug_file = None
         random.seed(self.random_seed)
-        self.net.set_maxdev(args.max_dev)
+        self.net.set_maxdev(self.args.max_dev)
         self.parser.set_defaults(plot=False)
-        self.datafolder = "./data/"
-        self.graphfolder = "./graph/"
-        self.mapfolder = "./map/"
+        self.datafolder = self.args.base_folder + "data/"
+        self.graphfolder = self.args.base_folder + "graph/"
+        self.mapfolder = self.args.base_folder + "map/"
         for f in [self.datafolder, self.graphfolder, self.mapfolder]:
             os.makedirs(f, exist_ok=True)
-        if self.args.R:
+        if self.R:
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s-%d-%s-%d-%d-%s-%d"\
-                        % (self.dataset, self.b, self.n, int(self.e),
-                           self.B[0], restructure, time.time())
+        self.filename = "%s_%d-%d-%s-%d-%d-%s-%d"\
+                        % (self.dataset, self.b, self.random_seed, self.n,
+                           int(self.e), self.B[0], restructure, time.time())
         if not DSN:
             self.t = terrain(self.DSN, self.dataset, ple=2.4, processes=self.P)
         else:
@@ -118,22 +135,24 @@ class CN_Generator():
 
     def get_gateway(self):
         try:
-            latlong = self.gwd['gws'][self.dataset][self.b]
+            position = self.gwd['gws'][self.dataset][self.b]
         except IndexError:
             print("Index %d is out of range" % (self.b))
             raise NoGWError
         except KeyError:
             print("Dataset %s is not in gw file" % (self.dataset))
             raise NoGWError
-        self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
+        self.gw_pos = Point(float(position[1]), float(position[0]))
         buildings = self.t.get_buildings(shape=self.gw_pos)
         if len(buildings) < 1:
             raise NoGWError
-        return buildings[0]
+        gw = buildings[0]
+        gw.height = position[2]
+        return gw
 
     def get_random_node(self):
         #must cast into list and order because sample on set is unpredictable
-        susceptible_tmp = sorted(list(self.susceptible), key=lambda x:x.gid)
+        susceptible_tmp = sorted(list(self.susceptible), key=lambda x: x.gid)
         new_node = random.sample(susceptible_tmp, 1)[0]
         self.susceptible.remove(new_node)
         return new_node
@@ -237,9 +256,8 @@ class CN_Generator():
 
     def restructure_edgeeffect_mt(self, num_links=1):
         # run only every self.args.R[0] nodes added
-        if not self.args.R or self.net.size() % self.args.R[0] != 0:
+        if not self.args.restructure or self.net.size() % int(self.R[0]) != 0:
             return
-
         num_links = self.R[1]
         max_links = num_links
         ee = EdgeEffect(self.net.graph, self.net.main_sg())

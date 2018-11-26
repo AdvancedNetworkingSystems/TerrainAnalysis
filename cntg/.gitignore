@@ -1,2 +1,6 @@
 _map.html
 *.graphml
+config.yml
+data/
+map/
+graph/
