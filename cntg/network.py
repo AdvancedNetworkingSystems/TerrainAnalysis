@@ -7,6 +7,7 @@ import wifi
 import random
 import datetime
 from collections import Counter, defaultdict
+from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
 
 
 def compute_link_quality(left, right, attrs, min_rate=6):
