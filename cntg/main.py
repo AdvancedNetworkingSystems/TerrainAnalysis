@@ -1,15 +1,9 @@
-from multiprocessing import Pool
-import random
 from cn_generator import CN_Generator
 from misc import NoGWError
 from strategies.growing_network import Growing_network
 from strategies.growing_network_exposed import Growing_network_exposed
+import configargparse
 
-import argparse
-import pkgutil
-import ubiquiti as ubnt
-import cProfile
-from pstats import Stats
 
 STRATEGIES = {
     'growing_network': Growing_network,
@@ -23,11 +17,11 @@ def parse_args():
 
     datasets = ["quarrata", "firenze", "pontremoli"]
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", help="a strategy to be used",
+    parser = configargparse.get_argument_parser(default_config_files=['config.yml', 'experiment.yml'])
+    parser.add_argument("-s", "--strategy", help="a strategy to be used",
                         choices=s_list, required=True)
 
-    parser.add_argument("-d", help="a data set from the available ones",
+    parser.add_argument("-d", "--dataset", help="a data set from the available ones",
                         choices=datasets, required=True)
 
     parser.add_argument("--min_dev",
@@ -44,10 +38,9 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    ubnt.load_devices()
     args, unknown_args = parse_args()
     try:
-        s = STRATEGIES.get(args.s)(args=args, unk_args=unknown_args)
+        s = STRATEGIES.get(args.strategy)(args=args, unk_args=unknown_args)
     except NoGWError:
         print("Gateway Not provieded")
     else:

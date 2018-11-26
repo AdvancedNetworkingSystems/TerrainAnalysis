@@ -1,0 +1,3 @@
+dsn: postgresql://dbreader@192.168.160.11/terrain_ans
+base_folder: ./
+processes: 10

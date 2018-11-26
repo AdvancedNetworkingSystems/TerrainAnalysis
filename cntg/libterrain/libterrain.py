@@ -20,7 +20,7 @@ class ST_MakeEnvelope(GenericFunction):
 
 
 class terrain():
-    def __init__(self, DSN, dataset, ple, processes=1):
+    def __init__(self, DSN, dataset, ple=2, processes=1):
         self.DSN = DSN
         self.dataset = dataset
         self.ple = ple
@@ -109,9 +109,7 @@ class terrain():
                    'dst': dst_b_list[i],
                    'srid': self.srid,
                    'lidar_table': self.lidar_table,
-                   'buff': self.buff,
-                   'h1': h1,
-                   'h2': h2
+                   'buff': self.buff
                    }for i in range(len(dst_b_list))]
         # add orders in the queue
         for order in params:
@@ -128,11 +126,11 @@ class terrain():
         srid = param_dict['srid']
         lidar_table = param_dict['lidar_table']
         buff = param_dict['buff']
-        h1 = param_dict['h1']
-        h2 = param_dict['h2']
         cur = con.cursor()
         p1 = src.coords().wkt
+        h1 = src.height
         p2 = dst.coords().wkt
+        h2 = src.height
         #TODO: use query formatting and not string formatting
         cur.execute("""WITH buffer AS(
                                 SELECT
