@@ -90,9 +90,13 @@ class CN_Generator():
         self.mapfolder = "./map/"
         for f in [self.datafolder, self.graphfolder, self.mapfolder]:
             os.makedirs(f, exist_ok=True)
-        self.filename = "%s-%s-%d-%s_%s-%d"\
+        if self.args.R:
+            restructure = "edgeffect"
+        else: 
+            restructure = "no_restructure"
+        self.filename = "%s-%s-%d-%s_%s-%d-%s-%d"\
                         % (args.d, self.n, int(self.e), self.b[0], 
-                           self.b[1], time.time())
+                           self.b[1], self.B[0], restructure, time.time())
         if not DSN:
             self.t = terrain(self.DSN, dataset, ple=2.4, processes=self.P)
         else:
