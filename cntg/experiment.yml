@@ -2,7 +2,7 @@ gateway: 1
 max_size: 100
 expansion: 500
 restructure: 10 1
-bandwidth: 20 0.1 10
+bandwidth: 2 0.1 10
 seed: 37
 strategy: growing_network
 dataset: firenze

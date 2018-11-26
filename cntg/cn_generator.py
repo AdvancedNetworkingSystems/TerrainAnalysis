@@ -4,6 +4,7 @@ from shapely.geometry.polygon import Polygon
 from shapely.geometry import Point
 from multiprocessing import Pool
 from misc import NoGWError
+from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
 import shapely
 import random
 import time
