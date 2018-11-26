@@ -269,8 +269,8 @@ class Network():
 
     def compute_equivalent_connectivity(self):
         """ if C_0 is the component including the gateway, then if graph
-        connectivity > 1, return 1/connectivity, else return the number of
-        cut-points """
+        connectivity > 1, return connectivity, else return 1/the number of
+        cut-points. High = robust (many node need to fail to partition) """
         if len(self.graph) < 2:
             return 1
         main_comp = None
@@ -279,10 +279,10 @@ class Network():
                 main_comp = c
 
         connectivity = nx.node_connectivity(main_comp)
-        if connectivity >= 1:
-            return 1/connectivity
+        if connectivity > 1:
+            return connectivity
         else:
-            return len(list(nx.articulation_points(
+            return 1/len(list(nx.articulation_points(
                                main_comp.to_undirected())))
 
     def compute_metrics(self):
@@ -318,7 +318,7 @@ class Network():
         metrics["price_per_user"] = self.cost/metrics['connected_nodes']
         metrics["price_per_mbit"] = metrics['price_per_user'] / \
                                      (sum([x for x in min_bandwidth.values()])/len(min_bandwidth))
-        metrics["cut_points"] = 1/self.compute_equivalent_connectivity()
+        metrics["cut_points"] = self.compute_equivalent_connectivity()
         # more useful metrics
         metrics["avg_link_per_antenna"] = numpy.mean([d['link_per_antenna']
                                                      for _, _, d in
