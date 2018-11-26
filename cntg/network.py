@@ -42,7 +42,7 @@ class Network():
     def add_node(self, building, attrs={}):
         self.graph.add_node(building.gid,
                             pos=building.xy(),
-                            node=Node(self.max_dev),
+                            node=Node(self.max_dev*2),
                             **attrs)
 
     def del_node(self, building):
