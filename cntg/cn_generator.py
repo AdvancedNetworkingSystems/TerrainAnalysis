@@ -226,7 +226,7 @@ class CN_Generator():
             print(k, v)
         if self.debug_file:
     
-            dataname = self.datafolder + "data-" + self.filename + ".txt"
+            dataname = self.datafolder + "data-" + self.filename + ".csv"
             with open(dataname, "w+") as f: 
                 header_line = "# node, min_bw" 
                 print(header_line, file=f)
@@ -403,8 +403,8 @@ class CN_Generator():
     def print_metrics(self):
         m = self.net.compute_metrics()
         if not self.debug_file:
-            statsname = self.datafolder + "stats-" + self.filename + ".txt"
-            self.debug_file = open(statsname, "w+")
+            statsname = self.datafolder + "stats-" + self.filename + ".csv"
+            self.debug_file = open(statsname, "w+", buffering=1) # line-buffered
             header_line = "#" + str(vars(self.args))
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)
