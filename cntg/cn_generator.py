@@ -381,7 +381,7 @@ class CN_Generator():
         m = self.net.compute_metrics()
         if not self.debug_file:
             statsname = self.datafolder + "stats-" + self.filename + ".txt"
-            self.debug_file = open(statsname, "w+")
+            self.debug_file = open(statsname, "w+", buffering=1) # line-buffered
             header_line = "#" + str(self.args)
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)
