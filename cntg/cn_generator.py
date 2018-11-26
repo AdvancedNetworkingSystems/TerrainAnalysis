@@ -19,6 +19,7 @@ import os
 import psutil
 import datetime
 import wifi
+import yaml
 
 def poor_mans_color_gamma(bitrate):
     blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
@@ -39,6 +40,8 @@ class CN_Generator():
         self.susceptible = set()
         self.pool = None
         self.net = network.Network()
+        with open("gws.yml", "r") as gwf:
+            self.gwd = yaml.load(gwf)
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("-D", help="debug: print metrics at each iteration"
                                  " and save metrics in the './data' folder",
@@ -47,9 +50,8 @@ class CN_Generator():
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
-        self.parser.add_argument('-b',
-                                 help="gateway latlong (lat.dd,long.dd)",
-                                 type=str, required=True)
+        self.parser.add_argument('-b', help="gateway number in [0,n] from gws.yml",
+                                 type=int, required=True)
         self.parser.add_argument('-n', help="number of nodes", type=int)
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  " defaults to buildings at 30km", type=float,
@@ -78,6 +80,7 @@ class CN_Generator():
         self.B = self.args.B
         self.R = self.args.R
         self.V = self.args.V
+        self.dataset = dataset
         wifi.default_channel_width = self.args.C
 
         self.random_seed = self.args.r
@@ -92,21 +95,19 @@ class CN_Generator():
             os.makedirs(f, exist_ok=True)
         if self.args.R:
             restructure = "edgeffect"
-        else: 
-            restructure = "no_restructure"
-        self.filename = "%s-%s-%d-%s_%s-%d-%s-%d"\
-                        % (args.d, self.n, int(self.e), self.b[0], 
-                           self.b[1], self.B[0], restructure, time.time())
-        if not DSN:
-            self.t = terrain(self.DSN, dataset, ple=2.4, processes=self.P)
         else:
-            self.t = terrain(DSN, dataset, ple=2.4, processes=self.P)
+            restructure = "no_restructure"
+        self.filename = "%s_%d-%s-%d-%d-%s-%d"\
+                        % (self.dataset, self.b, self.n, int(self.e),
+                           self.B[0], restructure, time.time())
+        if not DSN:
+            self.t = terrain(self.DSN, self.dataset, ple=2.4, processes=self.P)
+        else:
+            self.t = terrain(DSN, self.dataset, ple=2.4, processes=self.P)
         self.event_counter = 0
         ubnt.load_devices()
 
     def _post_init(self):
-        latlong = self.b.split(",")
-        self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
         gateway = self.get_gateway()
         self.infected[gateway.gid] = gateway
         self.net.add_gateway(gateway, attrs={'event': 0})
@@ -115,6 +116,15 @@ class CN_Generator():
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
+        try:
+            latlong = self.gwd['gws'][self.dataset][self.b]
+        except IndexError:
+            print("Index %d is out of range" % (self.b))
+            raise NoGWError
+        except KeyError:
+            print("Dataset %s is not in gw file" % (self.dataset))
+            raise NoGWError
+        self.gw_pos = Point(float(latlong[1]), float(latlong[0]))
         buildings = self.t.get_buildings(shape=self.gw_pos)
         if len(buildings) < 1:
             raise NoGWError

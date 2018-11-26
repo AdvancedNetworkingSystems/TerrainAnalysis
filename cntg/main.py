@@ -1,6 +1,7 @@
 from multiprocessing import Pool
 import random
 from cn_generator import CN_Generator
+from misc import NoGWError
 from strategies.growing_network import Growing_network
 from strategies.growing_network_exposed import Growing_network_exposed
 
@@ -45,5 +46,9 @@ def parse_args():
 if __name__ == '__main__':
     ubnt.load_devices()
     args, unknown_args = parse_args()
-    s = STRATEGIES.get(args.s)(args=args, unk_args=unknown_args)
-    s.main()
+    try:
+        s = STRATEGIES.get(args.s)(args=args, unk_args=unknown_args)
+    except NoGWError:
+        print("Gateway Not provieded")
+    else:
+        s.main()
