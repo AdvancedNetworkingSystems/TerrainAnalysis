@@ -7,6 +7,7 @@ import wifi
 import random
 import datetime
 from collections import Counter, defaultdict
+from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
 
 
 def compute_link_quality(left, right, attrs, min_rate=6):
@@ -42,7 +43,7 @@ class Network():
     def add_node(self, building, attrs={}):
         self.graph.add_node(building.gid,
                             pos=building.xy(),
-                            node=Node(self.max_dev),
+                            node=Node(self.max_dev*2),
                             **attrs)
 
     def del_node(self, building):
@@ -294,7 +295,7 @@ class Network():
         percentiles = [10, 50, 90]
         for perc in percentiles:
             metrics["perc_"+str(perc)] = ""
-        # Calculate costo of network
+        # Calculate cost of network
         self.cost = 0
         for n in self.graph.nodes(data=True):
             self.cost += n[1]['node'].cost()
@@ -315,9 +316,8 @@ class Network():
         metrics["unconnected_ratio"] = disconnected_nodes / \
                                        (1 + len(min_bandwidth))
         metrics["price_per_user"] = self.cost/metrics['connected_nodes']
-        metrics["price_per_mbyte"] = 8*metrics['price_per_user'] * \
-                                     sum([1/x for x in min_bandwidth.values()
-                                         if x])/metrics['connected_nodes']
+        metrics["price_per_mbit"] = metrics['price_per_user'] / \
+                                     (sum([x for x in min_bandwidth.values()])/len(min_bandwidth))
         metrics["cut_points"] = 1/self.compute_equivalent_connectivity()
         # more useful metrics
         metrics["avg_link_per_antenna"] = numpy.mean([d['link_per_antenna']

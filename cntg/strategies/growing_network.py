@@ -2,7 +2,6 @@ from multiprocessing import Pool
 import random
 from cn_generator import CN_Generator
 from misc import Susceptible_Buffer
-import argparse
 import time
 from antenna import Antenna
 import code
@@ -11,10 +10,9 @@ from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
 
 class Growing_network(CN_Generator):
 
-    def __init__(self, args, unk_args=None, DSN=None):
+    def __init__(self, args, unk_args=None):
         self.sb = Susceptible_Buffer()
-        CN_Generator.__init__(self, args.d, DSN=None, args=args,
-                              unk_args=unk_args)
+        CN_Generator.__init__(self, args=args, unk_args=unk_args)
         self.feasible_links = []
         self._post_init()
 
