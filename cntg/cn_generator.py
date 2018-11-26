@@ -108,7 +108,7 @@ class CN_Generator():
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s_%d-%d-%s-%d-%d-%s-%d"\
+        self.filename = "%s-%d-%d-%s-%d-%d-%s-%d"\
                         % (self.dataset, self.b, self.random_seed, self.n,
                            int(self.e), self.B[0], restructure, time.time())
         self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
