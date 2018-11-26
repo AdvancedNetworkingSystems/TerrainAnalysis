@@ -56,17 +56,10 @@ class CN_Generator():
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
-<<<<<<< HEAD
-        self.parser.add_argument('-b', help="gateway number in [0,n] from gws.yml",
-                                 type=int, default=0)
-        self.parser.add_argument('-n', help="number of nodes", type=int)
-        self.parser.add_argument('-e', help="expansion range (in meters),"
-=======
         self.parser.add_argument('-g', "--gateway", help="gateway number in [0,n] from gws.yml",
                                  type=int, required=True)
         self.parser.add_argument('-n', "--max_size", help="number of nodes", type=int)
         self.parser.add_argument('-e', "--expansion", help="expansion range (in meters),"
->>>>>>> 3706f7b524a0010aabf1ad947846177ecfaad815
                                  " defaults to buildings at 30km", type=float,
                                  default=30000)
         self.parser.add_argument('-r', "--seed", help="random seed,", type=int)
@@ -78,7 +71,7 @@ class CN_Generator():
                 "but not before we have at least 10 nodes",
                 default="1 0 1")
         self.parser.add_argument('-R', "--restructure", help="restructure with edgeffect every r"
-                " rounds, adding l links. Accepts two arguments: r l",)
+                " rounds, adding l links. Accepts two arguments: r l", default=[])
         self.parser.add_argument('-V', "--viewshed_extra", help="Add at most v links extra link if"
                 "these are in the viewshed of the current one.", type=int, default=0)
         self.parser.add_argument("-C", "--channel_width", help="802.11 channel width",
@@ -111,17 +104,14 @@ class CN_Generator():
         self.mapfolder = self.args.base_folder + "map/"
         for f in [self.datafolder, self.graphfolder, self.mapfolder]:
             os.makedirs(f, exist_ok=True)
-        if self.R:
+        if self.args.restructure:
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
         self.filename = "%s_%d-%d-%s-%d-%d-%s-%d"\
                         % (self.dataset, self.b, self.random_seed, self.n,
                            int(self.e), self.B[0], restructure, time.time())
-        if not DSN:
-            self.t = terrain(self.DSN, self.dataset, ple=2.4, processes=self.P)
-        else:
-            self.t = terrain(DSN, self.dataset, ple=2.4, processes=self.P)
+        self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
         self.event_counter = 0
         ubnt.load_devices()
 
