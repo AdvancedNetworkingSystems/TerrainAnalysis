@@ -56,8 +56,7 @@ class CN_Generator():
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  " defaults to buildings at 30km", type=float,
                                  default=30000)
-        self.parser.add_argument('-r', help="random seed,", type=int,
-                                 default=1)
+        self.parser.add_argument('-r', help="random seed,", type=int)
         self.parser.add_argument('-B', help="Accepts three arguments: bw frac min_n."
                 "Stop when a fraction of frac nodes has less than bw bandwidth. "
                 "Start measuring after min_n nodes (initially things may behave strangely "
@@ -82,8 +81,10 @@ class CN_Generator():
         self.V = self.args.V
         self.dataset = dataset
         wifi.default_channel_width = self.args.C
-
-        self.random_seed = self.args.r
+        if not self.args.r:
+            self.random_seed = random.randint(1, 500)
+        else:
+            self.random_seed = self.args.r
         self.debug_file = None
         random.seed(self.random_seed)
         self.net.set_maxdev(args.max_dev)
@@ -97,8 +98,8 @@ class CN_Generator():
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s_%d-%s-%d-%d-%s-%d"\
-                        % (self.dataset, self.b, self.n, int(self.e),
+        self.filename = "%s_%d-%d-%s-%d-%d-%s-%d"\
+                        % (self.dataset, self.b, self.random_seed, self.n, int(self.e),
                            self.B[0], restructure, time.time())
         if not DSN:
             self.t = terrain(self.DSN, self.dataset, ple=2.4, processes=self.P)
