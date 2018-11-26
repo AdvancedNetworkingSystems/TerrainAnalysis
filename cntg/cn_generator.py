@@ -82,7 +82,7 @@ class CN_Generator():
         self.dataset = dataset
         wifi.default_channel_width = self.args.C
         if not self.args.r:
-            self.random_seed = random.randint(1, 500)
+            self.random_seed = random.randint(1, 10000)
         else:
             self.random_seed = self.args.r
         self.debug_file = None
@@ -98,8 +98,8 @@ class CN_Generator():
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s_%d-%d-%s-%d-%d-%s-%d"\
-                        % (self.dataset, self.b, self.random_seed, self.n, int(self.e),
+        self.filename = "%s-%d-%s-%d-%d-%s-%d"\
+                        % (self.dataset, self.b, self.n, int(self.e),
                            self.B[0], restructure, time.time())
         if not DSN:
             self.t = terrain(self.DSN, self.dataset, ple=2.4, processes=self.P)
