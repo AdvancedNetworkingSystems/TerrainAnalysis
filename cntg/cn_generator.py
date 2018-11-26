@@ -49,7 +49,7 @@ class CN_Generator():
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
-        self.parser.add_argument('-b', "--gateway", help="gateway number in [0,n] from gws.yml",
+        self.parser.add_argument('-g', "--gateway", help="gateway number in [0,n] from gws.yml",
                                  type=int, required=True)
         self.parser.add_argument('-n', "--max_size", help="number of nodes", type=int)
         self.parser.add_argument('-e', "--expansion", help="expansion range (in meters),"

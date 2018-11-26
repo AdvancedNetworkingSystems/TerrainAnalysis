@@ -15,7 +15,7 @@ STRATEGIES = {
 def parse_args():
     s_list = STRATEGIES.keys()
 
-    datasets = ["quarrata", "firenze", "pontremoli"]
+    datasets = ["quarrata", "firenze", "pontremoli", "vaiano"]
 
     parser = configargparse.get_argument_parser(default_config_files=['config.yml', 'experiment.yml'])
     parser.add_argument("-s", "--strategy", help="a strategy to be used",
