@@ -41,10 +41,16 @@ class CN_Generator():
         with open("gws.yml", "r") as gwf:
             self.gwd = yaml.load(gwf)
         self.parser = configargparse.get_argument_parser()
+        self.parser.add_argument("-d", "--dataset",
+                                 help="a data set from the available ones",
+                                 required=True)
+        self.parser.add_argument("--max_dev",
+                                 help="maximum number of devices per node",
+                                 type=int, const=float('inf'), nargs='?',
+                                 default=float('inf'))
         self.parser.add_argument("-D", help="debug: print metrics at each iteration"
                                  " and save metrics in the './data' folder",
                                  action='store_true')
-        self.parser.add_argument('-c', '--my-config', required=True, is_config_file=True, help='config file path')
         self.parser.add_argument("-P", "--processes", help="number of parallel processes",
                                  default=1, type=int)
         self.parser.add_argument("-p", help="plot the graph using the browser",
@@ -82,7 +88,7 @@ class CN_Generator():
         if self.args.restructure:
             self.R = tuple(map(int, self.args.restructure.split(' ')))
         self.V = self.args.viewshed_extra
-        self.dataset = args.dataset
+        self.dataset = self.args.dataset
         wifi.default_channel_width = self.args.channel_width
         if not self.args.seed:
             self.random_seed = random.randint(1, 500)
@@ -90,7 +96,7 @@ class CN_Generator():
             self.random_seed = self.args.seed
         self.debug_file = None
         random.seed(self.random_seed)
-        self.net.set_maxdev(args.max_dev)
+        self.net.set_maxdev(self.args.max_dev)
         self.parser.set_defaults(plot=False)
         self.datafolder = self.args.base_folder + "data/"
         self.graphfolder = self.args.base_folder + "graph/"
