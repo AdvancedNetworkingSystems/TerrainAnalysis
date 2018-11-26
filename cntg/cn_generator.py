@@ -382,7 +382,7 @@ class CN_Generator():
         if not self.debug_file:
             statsname = self.datafolder + "stats-" + self.filename + ".txt"
             self.debug_file = open(statsname, "w+")
-            header_line = "#" + str(self.args)
+            header_line = "#" + str(vars(self.args))
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)
         print(len(self.net.graph), ",",  ",".join(map(str, m.values())), 
