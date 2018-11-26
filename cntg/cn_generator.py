@@ -51,7 +51,7 @@ class CN_Generator():
         self.parser.add_argument("-p", help="plot the graph using the browser",
                                  dest='plot', action='store_true')
         self.parser.add_argument('-b', help="gateway number in [0,n] from gws.yml",
-                                 type=int, required=True)
+                                 type=int, default=0)
         self.parser.add_argument('-n', help="number of nodes", type=int)
         self.parser.add_argument('-e', help="expansion range (in meters),"
                                  " defaults to buildings at 30km", type=float,
@@ -97,9 +97,9 @@ class CN_Generator():
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s_%d-%s-%d-%d-%s-%d"\
-                        % (self.dataset, self.b, self.n, int(self.e),
-                           self.B[0], restructure, time.time())
+        self.filename = "%s-%s-%d-%d-%d-%s-%d"\
+                        % (self.dataset, self.n, int(self.e),
+                           self.b, self.B[0], restructure, time.time())
         if not DSN:
             self.t = terrain(self.DSN, self.dataset, ple=2.4, processes=self.P)
         else:
