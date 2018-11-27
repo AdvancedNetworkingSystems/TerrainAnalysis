@@ -37,13 +37,16 @@ class Network():
                 return sg
 
     def add_gateway(self, building, attrs={}):
-        self.add_node(building, attrs)
+        self.graph.add_node(building.gid,
+                            pos=building.xy(),
+                            node=Node(self.max_dev * 2),
+                            **attrs)
         self.gateway = building.gid
 
     def add_node(self, building, attrs={}):
         self.graph.add_node(building.gid,
                             pos=building.xy(),
-                            node=Node(self.max_dev*2),
+                            node=Node(self.max_dev),
                             **attrs)
 
     def del_node(self, building):
@@ -91,7 +94,6 @@ class Network():
                     l[2]['interfering_links'] = interfering_links
                     l[2]['link_per_antenna'] = degree
 
-
     def add_link_generic(self, link, attrs={}, reverse=False, existing=False):
         result = None
         if reverse:
@@ -121,8 +123,6 @@ class Network():
                                            orientation=link['src_orient'],
                                            device=dst_ant.ubnt_device,
                                            channel=dst_ant.channel)
-        # print("Added link from %s to %s oriented %s, %s" % (link['src'].gid, link['dst'].gid, link['src_orient'], link['dst_orient']))
-        # print("src_ant %s, dst_ant %s"%(src_ant, dst_ant))
         # Now there are 2 devices, calculate the rates
         src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
                                                    src_ant.ubnt_device[0],
@@ -147,14 +147,14 @@ class Network():
                             dst_orient=link['src_orient'],
                             rate=dst_rate,
                             **attrs)
-        self.update_interfering_links(link, src_antenna=src_ant, dst_antenna=dst_ant) 
+        self.update_interfering_links(link, src_antenna=src_ant, dst_antenna=dst_ant)
         return src_ant
 
     def _add_link_existing(self, link, attrs={}):
         # Pick the best antenna at dst
         dst_antennas = self.graph.nodes[link['dst'].gid]['node']
         src_antennas = self.graph.nodes[link['src'].gid]['node']
-        #Check if there's a free channel on both (intersection)
+        # Check if there's a free channel on both (intersection)
         free_channels = set(dst_antennas.free_channels) & set(src_antennas.free_channels)
         try:
             channel = random.sample(free_channels, 1)[0]
