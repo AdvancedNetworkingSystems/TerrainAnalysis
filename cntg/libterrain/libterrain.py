@@ -131,8 +131,6 @@ class terrain():
         h1 = src.height
         p2 = dst.coords().wkt
         h2 = dst.height
-        print(h1)
-        print(h2)
         #TODO: use query formatting and not string formatting
         cur.execute("""WITH buffer AS(
                                 SELECT
