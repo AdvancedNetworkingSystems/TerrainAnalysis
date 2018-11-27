@@ -29,7 +29,7 @@ class Building(Base):
         return to_shape(self.geom)
 
     def coords(self):
-        return self.shape().centroid
+        return self.shape().representative_point()
 
     def xy(self):
         return (self.coords().x, self.coords().y)
