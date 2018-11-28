@@ -325,4 +325,7 @@ class Network():
                                                      self.graph.edges(
                                                      data=True)])
         metrics["time_passed"] = datetime.datetime.now()
+        metrics["antennas_per_node"] = sum([len(x[1]['node'].antennas) 
+                                            for x in self.graph.nodes(data=True)])\
+                                                    /len(min_bandwidth)
         return metrics

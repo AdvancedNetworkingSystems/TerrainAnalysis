@@ -21,6 +21,7 @@ import psutil
 import datetime
 import wifi
 import yaml
+from collections import defaultdict
 
 def poor_mans_color_gamma(bitrate):
     blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
@@ -113,6 +114,7 @@ class CN_Generator():
                            int(self.e), self.B[0], restructure, time.time())
         self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
         self.event_counter = 0
+        self.noloss_cache = defaultdict(set)
         ubnt.load_devices()
 
     def _post_init(self):
@@ -191,8 +193,21 @@ class CN_Generator():
         raise NotImplementedError
 
     def check_connectivity(self, nodes, new_node):
+        
+        if new_node in self.noloss_cache:
+            print(new_node, " has already been evaluated")
+        nodes_to_test = set(nodes) - self.noloss_cache[new_node]
         links = self.t.get_link_parallel(source_b=new_node, 
-                                         dst_b_list=nodes)
+                                         dst_b_list=list(nodes_to_test))
+        los_nodes = set()
+        for link in links:
+            if link:
+                if new_node == link['src']:
+                    los_nodes.add(link['dst'])
+                elif new_node == link['dst']:
+                    los_nodes.add(link['src'])
+        noloss_nodes = set(nodes) - los_nodes
+        self.noloss_cache[new_node] |= noloss_nodes
         return links
 
     def restructure(self):
