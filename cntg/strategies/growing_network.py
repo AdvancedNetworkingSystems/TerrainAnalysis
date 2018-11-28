@@ -29,11 +29,14 @@ class Growing_network(CN_Generator):
 
     def add_links(self, new_node):
         #returns all the potential links in LoS with the new node
+        print("testing node %r, against %d potential nodes,"
+              "already tested against %d nodes" % 
+                (new_node, len(self.infected) - len(self.noloss_cache[new_node]),
+                len(self.noloss_cache[new_node])))
         visible_links = [link for link in self.check_connectivity(
                          list(self.infected.values()), new_node) if link]
         
         # if there's at least one vaild link add the node to the network
-        print("testing node %r" % (new_node))
         event = 0
         if not visible_links:
             return False

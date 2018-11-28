@@ -23,6 +23,10 @@ import wifi
 import yaml
 from collections import defaultdict
 
+class NoMoreNodes(Exception):
+    pass
+
+
 def poor_mans_color_gamma(bitrate):
     blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
                    50: '#660066', 30: '#660000'}
@@ -145,6 +149,8 @@ class CN_Generator():
     def get_random_node(self):
         #must cast into list and order because sample on set is unpredictable
         susceptible_tmp = sorted(list(self.susceptible), key=lambda x: x.gid)
+        if not susceptible_tmp:
+            raise NoMoreNodes
         new_node = random.sample(susceptible_tmp, 1)[0]
         self.susceptible.remove(new_node)
         return new_node
@@ -194,9 +200,9 @@ class CN_Generator():
 
     def check_connectivity(self, nodes, new_node):
         
-        if new_node in self.noloss_cache:
-            print(new_node, " has already been evaluated")
         nodes_to_test = set(nodes) - self.noloss_cache[new_node]
+        if not nodes_to_test:
+            return []
         links = self.t.get_link_parallel(source_b=new_node, 
                                          dst_b_list=list(nodes_to_test))
         los_nodes = set()
@@ -218,7 +224,11 @@ class CN_Generator():
             while not self.stop_condition():
                 self.round += 1
                 # pick random node
-                new_node = self.get_newnode()
+                try:
+                    new_node = self.get_newnode()
+                except NoMoreNodes:
+                    print("No more nodes to test")
+                    break
                 # connect it to the network
                 if(self.add_links(new_node)):
                     # update area of susceptible nodes
