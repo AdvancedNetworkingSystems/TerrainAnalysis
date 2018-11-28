@@ -37,18 +37,26 @@ class Growing_network(CN_Generator):
         event = 0
         if not visible_links:
             return False
-        visible_links.sort(key=lambda x: x['loss'], reverse=True)
-        link = visible_links.pop()
-        self.infected[link['src'].gid] = link['src']
-        self.add_node(link['src'])
-        try:
-            src_ant = self.add_link(link)
-        except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
-            print(e.msg)
-            self.net.del_node(link['src'])
-            del self.infected[link['src'].gid]
+        while (visible_links):
+            visible_links.sort(key=lambda x: x['loss'], reverse=True)
+            link = visible_links.pop()
+            self.infected[link['src'].gid] = link['src']
+            self.add_node(link['src'])
+            try:
+                src_ant = self.add_link(link)
+            except (LinkUnfeasibilty) as e:
+                # If the link is unfeasible I don't need to try on the followings
+                print(e.msg)
+                self.net.del_node(link['src'])
+                del self.infected[link['src'].gid]
+                return False
+            except (AntennasExahustion, ChannelExahustion) as e:
+                # If the antennas/channel of dst are finished i can to try with another node
+                self.net.del_node(link['src'])
+                del self.infected[link['src'].gid]
+        if nor visible_links:
+            #I finished all the dst node
             return False
-        
         link_in_viewshed = [link for link in visible_links
                             if src_ant.check_node_vis(link['src_orient'])]
         link_in_viewshed.sort(key=lambda x: x['loss'], reverse=True)
