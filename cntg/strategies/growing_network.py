@@ -50,11 +50,13 @@ class Growing_network(CN_Generator):
                 print(e.msg)
                 self.net.del_node(link['src'])
                 del self.infected[link['src'].gid]
+                self.noloss_cache[new_node].add(link['dst'].gid)
                 return False
             except (AntennasExahustion, ChannelExahustion) as e:
                 # If the antennas/channel of dst are finished i can to try with another node
                 self.net.del_node(link['src'])
                 del self.infected[link['src'].gid]
+                self.noloss_cache[new_node].add(link['dst'].gid)
         if not visible_links:
             #I finished all the dst node
             return False
