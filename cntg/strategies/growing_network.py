@@ -38,8 +38,9 @@ class Growing_network(CN_Generator):
         
         # if there's at least one vaild link add the node to the network
         event = 0
+        visible_links.sort(key=lambda x: x['loss'], reverse=True)
+        src_ant = False
         while (visible_links):
-            visible_links.sort(key=lambda x: x['loss'], reverse=True)
             link = visible_links.pop()
             self.infected[link['src'].gid] = link['src']
             self.add_node(link['src'])
@@ -53,11 +54,11 @@ class Growing_network(CN_Generator):
                 self.noloss_cache[new_node].add(link['dst'])
                 return False
             except (AntennasExahustion, ChannelExahustion) as e:
-                # If the antennas/channel of dst are finished i can to try with another node
+                # If the antennas/channel of dst are finished i can try with another node
                 self.net.del_node(link['src'])
                 del self.infected[link['src'].gid]
                 self.noloss_cache[new_node].add(link['dst'])
-        if not visible_links:
+        if not src_ant:
             #I finished all the dst node
             return False
         link_in_viewshed = [link for link in visible_links
