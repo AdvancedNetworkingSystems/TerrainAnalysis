@@ -50,6 +50,7 @@ class Growing_network(CN_Generator):
             print(e.msg)
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
+            self.noloss_cache[link['src'].gid].add(link['dst'].gid)
             return False
         
         link_in_viewshed = [link for link in visible_links
