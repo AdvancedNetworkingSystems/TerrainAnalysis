@@ -120,6 +120,7 @@ class CN_Generator():
         self.event_counter = 0
         self.noloss_cache = defaultdict(set)
         ubnt.load_devices()
+        self.pool = Pool(self.P)
 
     def _post_init(self):
         gateway = self.get_gateway()
@@ -276,8 +277,6 @@ class CN_Generator():
         num_links = self.R[1]
         max_links = num_links
         ee = EdgeEffect(self.net.graph, self.net.main_sg())
-        if not self.pool:
-            self.pool = Pool(self.P)
         effect_edges = self.pool.map(ee.restructure_edgeeffect, self.feasible_links)
         effect_edges.sort(key=lambda x: x['effect'])
         # Try to connect the best link (try again till it gets connected)

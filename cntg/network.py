@@ -209,6 +209,22 @@ class Network():
                 pass
         nx.write_graphml(self.graph, filename)
 
+    def calc_metric(self, link):
+        self.add_node(link['src'])
+        try:
+            src_ant = self.add_link_generic(link)
+        except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
+            worse = (link['src'].gid, None)
+        else:
+            # i must remove the new node from this list to avoid problems when i make difference and order them
+            min_bw = [m for m in list(self.compute_minimum_bandwidth().items())
+                            if m[0] != link['src'].gid]
+            if min_bw:
+                worse = min(min_bw, key=lambda x: x[1])
+            else:
+                #This happens only at the begining when the new node is the 2nd node
+                worse = (link['src'].gid, 0)
+        return({'link': link, 'node': worse[0], 'min_bw': worse[1]})
 
 # --- METRICS ---
     def compute_minimum_bandwidth(self):
