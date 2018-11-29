@@ -46,45 +46,7 @@ class CN_Generator():
         self.net = network.Network()
         with open("gws.yml", "r") as gwf:
             self.gwd = yaml.load(gwf)
-        self.parser = configargparse.get_argument_parser()
-        self.parser.add_argument("-d", "--dataset",
-                                 help="a data set from the available ones",
-                                 required=True)
-        self.parser.add_argument("--max_dev",
-                                 help="maximum number of devices per node",
-                                 type=int, const=float('inf'), nargs='?',
-                                 default=float('inf'))
-        self.parser.add_argument("-D", help="debug: print metrics at each iteration"
-                                 " and save metrics in the './data' folder",
-                                 action='store_true')
-        self.parser.add_argument("-P", "--processes", help="number of parallel processes",
-                                 default=1, type=int)
-        self.parser.add_argument("-p", help="plot the graph using the browser",
-                                 dest='plot', action='store_true')
-        self.parser.add_argument('-g', "--gateway", help="gateway number in [0,n] from gws.yml",
-                                 type=int, required=True)
-        self.parser.add_argument('-n', "--max_size", help="number of nodes", type=int)
-        self.parser.add_argument('-e', "--expansion", help="expansion range (in meters),"
-                                 " defaults to buildings at 30km", type=float,
-                                 default=30000)
-        self.parser.add_argument('-r', "--seed", help="random seed,", type=int)
-        self.parser.add_argument('-B', "--bandwidth", help="Accepts three arguments: bw frac min_n."
-                "Stop when a fraction of frac nodes has less than bw bandwidth. "
-                "Start measuring after min_n nodes (initially things may behave strangely "
-                "(in Mbps). Ex: '1 0 1' will stop when any node has less than 1Mbps "
-                "(in Mbps). Ex: '5 0.15 10' will stop when 15% of nodes has less than 5Mbps "
-                "but not before we have at least 10 nodes",
-                default="1 0 1")
-        self.parser.add_argument('-R', "--restructure", help="restructure with edgeffect every r"
-                " rounds, adding l links. Accepts two arguments: r l", default=[])
-        self.parser.add_argument('-V', "--viewshed_extra", help="Add at most v links extra link if"
-                "these are in the viewshed of the current one.", type=int, default=0)
-        self.parser.add_argument("-C", "--channel_width", help="802.11 channel width",
-                        choices=[20,40,80,160], default=20, type=int)
-        self.parser.add_argument("--dsn", help="DSN to for the connection to PostGIS", required=True)
-        self.parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
-
-        self.args = self.parser.parse_args(unk_args)
+        self.args = args
         self.n = self.args.max_size
         self.e = self.args.expansion
         self.b = self.args.gateway
@@ -103,7 +65,6 @@ class CN_Generator():
         self.debug_file = None
         random.seed(self.random_seed)
         self.net.set_maxdev(self.args.max_dev)
-        self.parser.set_defaults(plot=False)
         self.datafolder = self.args.base_folder + "data/"
         self.graphfolder = self.args.base_folder + "graph/"
         self.mapfolder = self.args.base_folder + "map/"
@@ -113,8 +74,8 @@ class CN_Generator():
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s-%d-%d-%s-%d-%d-%s-%d"\
-                        % (self.dataset, self.b, self.random_seed, self.n,
+        self.filename = "%s-%s-%d-%d-%s-%d-%d-%s-%d"\
+                        % (self.dataset, self.args.strategy, self.b, self.random_seed, self.n,
                            int(self.e), self.B[0], restructure, time.time())
         self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
         self.event_counter = 0
