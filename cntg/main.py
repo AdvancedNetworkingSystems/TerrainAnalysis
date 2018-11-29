@@ -3,14 +3,13 @@
 from cn_generator import CN_Generator
 from misc import NoGWError
 from strategies.growing_network import Growing_network
-from strategies.growing_network_exposed import Growing_network_exposed
+from strategies.pref_attachment import Pref_attachment
 import configargparse
 
 
 STRATEGIES = {
     'growing_network': Growing_network,
-    'growing_network_exposed': Growing_network_exposed
-
+    'pref_attachment': Pref_attachment
 }
 
 
