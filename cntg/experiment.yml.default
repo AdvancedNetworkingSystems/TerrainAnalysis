@@ -5,6 +5,6 @@ restructure: 10 1
 bandwidth: 2 0.1 10
 seed: 37
 strategy: growing_network
-dataset: firenze
+dataset: vaiano
 viewshed_extra: 2
 channel_width: 20

@@ -1,3 +1,4 @@
 dsn: postgresql://dbreader@192.168.160.11/terrain_ans
+lidar_table: lidar
 base_folder: ./
 processes: 10

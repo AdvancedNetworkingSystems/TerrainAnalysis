@@ -1,4 +1,4 @@
-from libterrain.libterrain import terrain
+import libterrain as lt
 from geoalchemy2.shape import to_shape
 from shapely.geometry.polygon import Polygon
 from shapely.geometry import Point
@@ -77,7 +77,10 @@ class CN_Generator():
         self.filename = "%s-%s-%d-%d-%s-%d-%d-%s-%d"\
                         % (self.dataset, self.args.strategy, self.b, self.random_seed, self.n,
                            int(self.e), self.B[0], restructure, time.time())
-        self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
+        #self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
+        self.t = lt.ParallelTerrainInterface(self.args.dsn, lidar_table=self.args.lidar_table, processes=self.P)
+        self.BI = lt.BuildingInterface.get_best_interface(self.args.dsn, self.dataset)
+        self.polygon_area = self.BI.get_province_area(self.dataset)
         self.event_counter = 0
         self.noloss_cache = defaultdict(set)
         ubnt.load_devices()
@@ -101,7 +104,8 @@ class CN_Generator():
             print("Dataset %s is not in gw file" % (self.dataset))
             raise NoGWError
         self.gw_pos = Point(float(position[1]), float(position[0]))
-        buildings = self.t.get_buildings(shape=self.gw_pos)
+        #buildings = self.t.get_buildings(shape=self.gw_pos)
+        buildings = self.BI.get_buildings(shape=self.gw_pos)
         if len(buildings) < 1:
             raise NoGWError
         gw = buildings[0]
@@ -120,7 +124,8 @@ class CN_Generator():
     def get_susceptibles(self):
         geoms = [g.shape() for g in self.infected.values()]
         self.sb.set_shape(geoms)
-        db_buildings = self.t.get_buildings(self.sb.get_buffer(self.e))
+        #db_buildings = self.t.get_buildings(self.sb.get_buffer(self.e))
+        db_buildings =  self.BI.get_buildings(shape=self.sb.get_buffer(self.e), area=self.polygon_area)
         self.susceptible = set(db_buildings) - set(self.infected.values())
 
     def get_newnode(self):
@@ -165,15 +170,17 @@ class CN_Generator():
         nodes_to_test = set(nodes) - self.noloss_cache[new_node]
         if not nodes_to_test:
             return []
-        links = self.t.get_link_parallel(source_b=new_node, 
-                                         dst_b_list=list(nodes_to_test))
+        links = self.t.get_link_parallel(src=new_node.coord_height(),
+                                         dst_list=list(map(lambda x: x.coord_height(), nodes_to_test)))
         los_nodes = set()
-        for link in links:
-            if link:
-                if new_node == link['src']:
-                    los_nodes.add(link['dst'])
-                elif new_node == link['dst']:
-                    los_nodes.add(link['src'])
+        for l in links:
+            if l:
+                l['src'] = l['src']['building']
+                l['dst'] = l['dst']['building']
+                if new_node == l['src']:
+                    los_nodes.add(l['dst'])
+                elif new_node == l['dst']:
+                    los_nodes.add(l['src'])
         noloss_nodes = set(nodes) - los_nodes
         self.noloss_cache[new_node] |= noloss_nodes
         return links
@@ -274,11 +281,11 @@ class CN_Generator():
         return graphname
 
     def graph_to_animation(self):
-        quasi_centroid = self.t.polygon_area.representative_point()
+        quasi_centroid = self.polygon_area.representative_point()
         self.animation = folium.Map(location=(quasi_centroid.y,
                                     quasi_centroid.x),
                                     zoom_start=14, tiles='OpenStreetMap')
-        p = shapely.ops.cascaded_union([pl for pl in self.t.polygon_area])
+        p = shapely.ops.cascaded_union([pl for pl in self.polygon_area])
         point_list = list(zip(*p.exterior.coords.xy))
         folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
                         fill_color="green", weight=1,
@@ -307,7 +314,7 @@ class CN_Generator():
             }
         n_coords = []
         n_times = []
-
+    
         for n in nodes_s:
             n_coords.append([n[1]['pos'], n[1]['pos']])
             n_times.append(1530744263666 + n[1]['event'] * 36000000)
@@ -327,17 +334,17 @@ class CN_Generator():
                 }
             }
         }
-
+    
         plugins.TimestampedGeoJson({
             'type': 'FeatureCollection',
             'features': [features_edges, features_nodes]},
             transition_time=500, auto_play=False).add_to(self.animation)
 
     def graph_to_leaflet(self):
-        quasi_centroid = self.t.polygon_area.representative_point()
+        quasi_centroid = self.polygon_area.representative_point()
         self.map = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
                               zoom_start=14, tiles='OpenStreetMap')
-        p = shapely.ops.cascaded_union([pl for pl in self.t.polygon_area])
+        p = shapely.ops.cascaded_union([pl for pl in self.polygon_area])
         point_list = list(zip(*p.exterior.coords.xy))
         folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
                         fill_color="green", weight=1,
