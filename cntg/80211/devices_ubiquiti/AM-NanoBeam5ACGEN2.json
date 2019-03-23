@@ -6,8 +6,8 @@
   "beamwidth_az": 30,
   "beamwidth_el": 30,
   "max_streams": 2,
-  "gain_tx": 13,
-  "gain_rx": 13,
+  "gain_tx": 19,
+  "gain_rx": 19,
   "max_consumption": 8.5,
   "gbps": "10/100/1000",
   "rx_power":{
