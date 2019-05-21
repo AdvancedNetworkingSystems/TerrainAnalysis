@@ -64,6 +64,15 @@ class Parser:
             os.system("mkdir %s_%s" % (self.dataset.lower(), self.content.lower()))
             with Pool(self.processes) as p:
                 p.map(self.download_worker, urls)
+    
+    def extract_worker(self, file):
+        os.system("unzip %s -d %s_%s -q" % (file, self.dataset.lower(), self.content.lower()))
+
+
+    def extract(self):
+        files = os.listdir("%s_%s" % (self.dataset.lower(), self.content.lower()))
+        with Pool(self.processes) as p:
+            p.map(self.download_worker, files)
 
 
 if __name__ == '__main__':
@@ -78,9 +87,12 @@ if __name__ == '__main__':
     parser.add_argument('-d', "--dataset", help="Dataset between: Firenze, Pontremoli, Vaiano or Quarrata")
     parser.add_argument('-sc', action='store_true')
     parser.add_argument('-dw', action='store_true')
+    parser.add_argument('-ex', action='store_true')
     args = parser.parse_args()
     p = Parser(args.content, args.dataset, args.processes)
     if(args.sc):
         p.scrape()
     if(args.dw):
         p.download()
+    if(args.ex):
+        p.extract()
