@@ -27,6 +27,7 @@ class Parser:
         self.content = content.upper()
         self.xmax = 1470
         self.ymax = 827
+        self.base = "%s_%s" % (self.dataset.lower(), self.content.lower())
         # self.manager = Manager()
         # self.Global = manager.Namespace()
 
@@ -47,7 +48,7 @@ class Parser:
         with Pool(self.processes) as p:
             tuple_space = itertools.product(range(0, self.xmax, 10), range(0, self.ymax, 10))
             urls = p.map(self.scrape_worker, tuple_space)
-        with open("%s_%s.urls" % (self.dataset.lower(), self.content.lower()), "w") as fw:
+        with open("%s.urls" % (self.base), "w") as fw:
             urls = set(urls)
             for u in urls:
                 if u:
@@ -55,24 +56,24 @@ class Parser:
 
 
     def download_worker(self, url):
-        os.system("wget -q -P %s_%s %s" % (self.dataset.lower(), self.content.lower(), url[:-1]))
+        os.system("wget -q -P %s %s" % (self.base, url[:-1]))
 
 
     def download(self):
-        with open("%s_%s.urls" % (self.dataset.lower(), self.content.lower()), "r") as fr:
+        with open("%s.urls" % (self.base), "r") as fr:
             urls = fr.readlines()
-            os.system("mkdir %s_%s" % (self.dataset.lower(), self.content.lower()))
+            os.system("mkdir %s" % (self.base))
             with Pool(self.processes) as p:
                 p.map(self.download_worker, urls)
     
     def extract_worker(self, file):
-        os.system("unzip %s -d %s_%s -q" % (file, self.dataset.lower(), self.content.lower()))
+        os.system("unzip %s/%s -d %s -q" % (self.base, file, self.base))
 
 
     def extract(self):
-        files = os.listdir("%s_%s" % (self.dataset.lower(), self.content.lower()))
+        files = os.listdir("%s" % (self.base))
         with Pool(self.processes) as p:
-            p.map(self.download_worker, files)
+            p.map(self.extract_worker, files)
 
 
 if __name__ == '__main__':
