@@ -49,13 +49,17 @@ class Parser:
             urls = p.map(self.scrape_worker, tuple_space)
         with open("%s_%s.urls" % (self.dataset.lower(), self.content.lower()), "w") as fw:
             urls = set(urls)
+            for u in urls:
+                if u:
+                    print(u, file=fw)
+
 
     def download_worker(self, url):
         os.system("wget -q -P %s_%s %s" % (self.dataset.lower(), self.content.lower(), url[:-1]))
 
 
     def download(self):
-        with open("%s_%s.url" % (self.dataset.lower(), self.content.lower()), "r") as fr:
+        with open("%s_%s.urls" % (self.dataset.lower(), self.content.lower()), "r") as fr:
             urls = fr.readlines()
             os.system("mkdir %s_%s" % (self.dataset.lower(), self.content.lower()))
             with Pool(self.processes) as p:
