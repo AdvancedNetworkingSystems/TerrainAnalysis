@@ -5,7 +5,7 @@ from multiprocessing import Pool
 import itertools
 import argparse
 import os
-
+import glob
 
 class Parser:
     def __init__(self, content, dataset, processes):
@@ -67,13 +67,22 @@ class Parser:
                 p.map(self.download_worker, urls)
     
     def extract_worker(self, file):
-        os.system("unzip %s/%s -d %s -q" % (self.base, file, self.base))
+        os.system("unzip -o %s/%s -d %s" % (self.base, file, self.base))
 
 
     def extract(self):
         files = os.listdir("%s" % (self.base))
         with Pool(self.processes) as p:
             p.map(self.extract_worker, files)
+
+    def upload_worker(self, file):
+        os.system(f"pdal pipeline toscana.json --readers.gdal.filename={file} && mv {file} {file}.loaded")
+                
+
+    def upload_to_db(self):
+        files = glob.glob(f"{self.base}/*.asc")
+        with Pool(self.processes) as p:
+            p.map(self.upload_worker, files)
 
 
 if __name__ == '__main__':
@@ -89,6 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('-sc', action='store_true')
     parser.add_argument('-dw', action='store_true')
     parser.add_argument('-ex', action='store_true')
+    parser.add_argument('-up', action='store_true')
     args = parser.parse_args()
     p = Parser(args.content, args.dataset, args.processes)
     if(args.sc):
@@ -97,3 +107,5 @@ if __name__ == '__main__':
         p.download()
     if(args.ex):
         p.extract()
+    if(args.up):
+        p.upload_to_db()
