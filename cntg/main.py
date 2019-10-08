@@ -4,12 +4,14 @@ from cn_generator import CN_Generator
 from misc import NoGWError
 from strategies.growing_network import Growing_network
 from strategies.pref_attachment import Pref_attachment
+from strategies.mm import MM
 import configargparse
 
 
 STRATEGIES = {
     'growing_network': Growing_network,
-    'pref_attachment': Pref_attachment
+    'pref_attachment': Pref_attachment,
+    'mm': MM
 }
 
 
@@ -60,7 +62,6 @@ def parse_args():
     parser.set_defaults(plot=False)
     args, unknown = parser.parse_known_args()
     return args, unknown
-
 
 if __name__ == '__main__':
     args, unknown_args = parse_args()

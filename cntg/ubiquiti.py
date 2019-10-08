@@ -225,7 +225,7 @@ def check_link(x, y, pathloss):
 
 def get_maximum_rate(pathloss, src, dst):
     possible_mod_dw = get_feasible_modulation_list(src, dst, pathloss)
-    possible_mod_up = get_feasible_modulation_list(src, dst, pathloss)
+    possible_mod_up = get_feasible_modulation_list(dst, src, pathloss)
     if not (possible_mod_dw and possible_mod_up):
         return (0, 0)
     src_streams = int(get_attribute(src, 'max_streams'))
