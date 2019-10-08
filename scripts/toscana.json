@@ -1,0 +1,34 @@
+{
+	"pipeline":[
+		{
+			"type" : "readers.gdal"
+		},
+		{
+			"type": "filters.ferry",
+			"dimensions" : "band-1=Z"
+		},
+		{
+			"type" : "filters.range",
+			"limits" : "Z[-100:]"
+		},
+		{
+      			"type":"filters.chipper",
+			"capacity":"600"
+		},
+		{
+			"type":"filters.reprojection",
+			"in_srs": "EPSG:3003",
+			"out_srs": "EPSG:4326"
+		},
+		{
+			"type": "writers.pgpointcloud",
+			"connection":"host='192.168.160.11' dbname='terrain_ans' user='dboperator' password='pippo123'",
+			"table" : "dsm_toscana",
+			"column": "pa",
+			"srid": "4326",
+		      	"compression":"dimensional",
+			"output_dims": "X,Y,Z"
+		}
+	]
+}
+
