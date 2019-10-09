@@ -40,6 +40,7 @@ class CN_Generator():
 
     def __init__(self, args={}, unk_args={}):
         self.round = 0
+        self.below_bw_nodes = 0
         self.infected = {}
         self.susceptible = set()
         self.pool = None
