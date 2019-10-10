@@ -75,9 +75,9 @@ class CN_Generator():
             restructure = "edgeffect"
         else:
             restructure = "no_restructure"
-        self.filename = "%s-%s-%d-%d-%s-%d-%d-%s-%d"\
+        self.filename = "%s-%s-%d-%d-%s-%d-%d-%s-%d-%d-%d"\
                         % (self.dataset, self.args.strategy, self.b, self.random_seed, self.n,
-                           int(self.e), self.B[0], restructure, time.time())
+                           int(self.e), self.B[0], restructure, self.V, self.max_dev, time.time())
         #self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
         self.t = lt.ParallelTerrainInterface(self.args.dsn, lidar_table=self.args.lidar_table, processes=self.P)
         self.BI = lt.BuildingInterface.get_best_interface(self.args.dsn, self.dataset)
