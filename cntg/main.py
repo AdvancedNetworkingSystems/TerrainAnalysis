@@ -6,6 +6,7 @@ from strategies.growing_network import Growing_network
 from strategies.pref_attachment import Pref_attachment
 from strategies.mm import MM
 import configargparse
+import cProfile
 
 
 STRATEGIES = {
@@ -22,13 +23,19 @@ def parse_args():
                         help="a strategy to be used",
                         choices=s_list,
                         required=True)
+    parser.add_argument("-dd", "--data_dir",
+                              help="directory containing the pre-computed data of the area",
+                              required=True)
     parser.add_argument("-d", "--dataset",
                              help="a data set from the available ones",
                              required=True)
+    parser.add_argument("-ne", "--n_elev",
+                             help="fixed elevation for nodes antenna poles",
+                             required=True, type=int)
     parser.add_argument("--max_dev",
                              help="maximum number of devices per node",
                              type=int, const=float('inf'), nargs='?',
-                             default=float('inf'))
+                             default=int(10))
     parser.add_argument("-D", help="debug: print metrics at each iteration"
                              " and save metrics in the './data' folder",
                              action='store_true')
@@ -57,7 +64,6 @@ def parse_args():
     parser.add_argument("-C", "--channel_width", help="802.11 channel width",
                     choices=[20,40,80,160], default=20, type=int)
     parser.add_argument("--dsn", help="DSN to for the connection to PostGIS", required=True)
-    parser.add_argument("--lidar_table", help="pointcloud table containing lidar/srtm data", required=True)
     parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
     parser.set_defaults(plot=False)
     args, unknown = parser.parse_known_args()

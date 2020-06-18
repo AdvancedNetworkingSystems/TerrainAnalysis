@@ -1,40 +1,29 @@
-import libterrain as lt
-from geoalchemy2.shape import to_shape
-from shapely.geometry.polygon import Polygon
-from shapely.geometry import Point
-from multiprocessing import Pool
-from misc import NoGWError
-from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
-import shapely
 import random
 import time
 import networkx as nx
-import configargparse
 import network
 import folium
-from folium import plugins
-import ubiquiti as ubnt
-from edgeffect import EdgeEffect
-import multiprocessing as mp
+import pickle
 import os
-import psutil
-import datetime
 import wifi
 import yaml
-from collections import defaultdict
+import numpy as np
+import geopandas as gpd
+import pandas as pd
+import ubiquiti as ubnt
+from folium import plugins
+from misc import NoGWError
+from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
+from edgeffect import EdgeEffect
+from building import Building
+from shapely.ops import cascaded_union
+from pyproj import Proj, transform
+import shapely.ops
+from functools import partial
+from shapely.geometry import box
 
 class NoMoreNodes(Exception):
     pass
-
-
-def poor_mans_color_gamma(bitrate):
-    blue_to_red = {200: '#03f', 150: '#6600cc', 100: '#660099',
-                   50: '#660066', 30: '#660000'}
-    for b in sorted(blue_to_red):
-        if bitrate < b:
-            return blue_to_red[b]
-    return blue_to_red[200]
-
 
 class CN_Generator():
 
@@ -43,7 +32,6 @@ class CN_Generator():
         self.below_bw_nodes = 0
         self.infected = {}
         self.susceptible = set()
-        self.pool = None
         self.net = network.Network()
         with open("gws.yml", "r") as gwf:
             self.gwd = yaml.load(gwf)
@@ -76,66 +64,103 @@ class CN_Generator():
         else:
             restructure = "no_restructure"
         self.filename = "%s-%s-%d-%d-%s-%d-%d-%s-%d-%d-%d"\
-                        % (self.dataset, self.args.strategy, self.b, self.random_seed, self.n,
-                           int(self.e), self.B[0], restructure, self.V, self.args.max_dev, time.time())
-        #self.t = terrain(self.args.dsn, self.dataset, ple=2.4, processes=self.P)
-        self.t = lt.ParallelTerrainInterface(self.args.dsn, lidar_table=self.args.lidar_table, processes=self.P)
-        self.BI = lt.BuildingInterface.get_best_interface(self.args.dsn, self.dataset)
-        self.polygon_area = self.BI.get_province_area(self.dataset)
+                        % (self.dataset,
+                           self.args.strategy,
+                           self.b,
+                           self.random_seed,
+                           self.n,
+                           int(self.e),
+                           self.B[0],
+                           restructure,
+                           self.V,
+                           self.args.max_dev,
+                           time.time())
+        self.loss_graph_path = "%s/loss_graph.edgelist"%(self.args.data_dir)
+        if os.path.exists(self.loss_graph_path+".dump"):
+            with open(self.loss_graph_path+".dump", 'rb') as handle:
+                print("A")
+                self.loss_graph_dict = pickle.load(handle)
+                print("B")
+        else:
+            self.loss_graph_dict = {}
+            with open(self.loss_graph_path) as gr:
+                for line in gr:
+                    l = line[:-1].split(' ')
+                    if(len(l)<=1):
+                        continue
+                    if int(l[0]) not in self.loss_graph_dict.keys():
+                        self.loss_graph_dict[int(l[0])] = {}
+                    self.loss_graph_dict[int(l[0])][int(l[1])] = [
+                                                            np.int8(l[2]),
+                                                            np.float16(l[3]),
+                                                            np.float16(l[4])]
+                with open(self.loss_graph_path+".dump", 'wb') as handle:
+                    pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir))
+        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+        self.soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
+        self.soc_df['id'] = self.soc_df.gid
+        self.soc_df = self.soc_df.set_index('id')
+        self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
+        self.pop_tot = self.soc_df.P1.sum()
+        self.buildings_idx = self.buildings.sindex
         self.event_counter = 0
-        self.noloss_cache = defaultdict(set)
         ubnt.load_devices()
-        self.pool = Pool(self.P)
 
     def _post_init(self):
         gateway = self.get_gateway()
+        self.gateway = gateway
         self.infected[gateway.gid] = gateway
         self.net.add_gateway(gateway, attrs={'event': 0})
         self.event_counter += 1
-        self.get_susceptibles()
+        self.db_buildings = [Building(b.id, b.geometry) for b in self.buildings.itertuples()]
+        self.susceptible = set(self.db_buildings) - set(self.infected.values())
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
         try:
-            position = self.gwd['gws'][self.dataset][self.b]
+            osm_id = self.gwd['gws'][self.dataset][self.b]
         except IndexError:
             print("Index %d is out of range" % (self.b))
             raise NoGWError
         except KeyError:
             print("Dataset %s is not in gw file" % (self.dataset))
             raise NoGWError
-        self.gw_pos = Point(float(position[1]), float(position[0]))
-        #buildings = self.t.get_buildings(shape=self.gw_pos)
-        buildings = self.BI.get_buildings(shape=self.gw_pos)
-        if len(buildings) < 1:
-            raise NoGWError
-        gw = buildings[0]
-        gw.height = position[2]
-        return gw
-
-    def get_random_node(self):
-        #must cast into list and order because sample on set is unpredictable
-        susceptible_tmp = sorted(list(self.susceptible), key=lambda x: x.gid)
-        if not susceptible_tmp:
-            raise NoMoreNodes
-        new_node = random.sample(susceptible_tmp, 1)[0]
-        self.susceptible.remove(new_node)
-        return new_node
+        return Building(osm_id, self.buildings.loc[osm_id].geometry)
 
     def get_susceptibles(self):
-        geoms = [g.shape() for g in self.infected.values()]
-        self.sb.set_shape(geoms)
+        #self.susceptible = set(self.db_buildings) - set(self.infected.values())
+        return
+
+        # geoms =[g.point for g in self.infected.values()]
+        # prova = gpd.GeoDataFrame(pd.DataFrame([(g.gid, g.point) for g in self.infected.values()], columns=["id", "geometry"]))
+        # self.sb = box(*prova.total_bounds).buffer(self.e)
+        # #self.sb = cascaded_union(geoms).buffer(self.e)
+        # possible_matches_index = list(self.buildings_idx.intersection(self.sb.bounds))
+        # buildings = self.buildings.iloc[possible_matches_index]
+        # #buildings = possible_matches[possible_matches.intersects(self.sb)]
+        #db_buildings = [Building(b.osm_id, b.geometry) for b in self.buildings.itertuples()] #use bounds of buffer, much faster
         #db_buildings = self.t.get_buildings(self.sb.get_buffer(self.e))
-        db_buildings =  self.BI.get_buildings(shape=self.sb.get_buffer(self.e), area=self.polygon_area)
-        self.susceptible = set(db_buildings) - set(self.infected.values())
+
+        #self.susceptible = set(db_buildings) - set(self.infected.values())
 
     def get_newnode(self):
-        raise NotImplementedError
+        #must cast into list and order because sample on set is unpredictable
+        # susceptible_tmp = sorted(list(self.susceptible), key=lambda x: x.gid)
+        # if not susceptible_tmp:
+        #     raise NoMoreNodes
+        gid = int(np.random.choice(self.gid_pop_prop[:,0], p =self.gid_pop_prop[:,1]/self.pop_tot))
+        self.pop_tot -= self.soc_df.loc[gid].P1
+        self.soc_df = self.soc_df.drop(gid)
+        self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
+        return Building(gid, self.buildings.loc[gid].geometry)
+
+        #new_node = random.sample(susceptible_tmp, 1)[0]
+        #self.susceptible.remove(new_node)
+        #return new_node
+
 
     def stop_condition(self):
-        raise NotImplementedError
-
-    def stop_condition_maxnodes(self):
         return len(self.infected) > self.n
 
     def stop_condition_minbw(self, rounds=1):
@@ -167,23 +192,30 @@ class CN_Generator():
         raise NotImplementedError
 
     def check_connectivity(self, nodes, new_node):
-        
-        nodes_to_test = set(nodes) - self.noloss_cache[new_node]
-        if not nodes_to_test:
-            return []
-        links = self.t.get_link_parallel(src=new_node.coord_height(),
-                                         dst_list=list(map(lambda x: x.coord_height(), nodes_to_test)))
-        los_nodes = set()
-        for l in links:
-            if l:
-                l['src'] = l['src']['building']
-                l['dst'] = l['dst']['building']
-                if new_node == l['src']:
-                    los_nodes.add(l['dst'])
-                elif new_node == l['dst']:
-                    los_nodes.add(l['src'])
-        noloss_nodes = set(nodes) - los_nodes
-        self.noloss_cache[new_node] |= noloss_nodes
+        links = []
+        n_id = int(new_node.gid)
+        neighbors = []
+        try:
+            for n in nodes:
+                if n.gid in self.loss_graph_dict[n_id].keys():
+                    neighbors.append(n)
+        except KeyError:
+            print("Node out of area %d"%(n_id))
+        for n in neighbors:
+            link = {}
+            link['src'] = new_node
+            link['dst'] = n
+            link['src_orient'] = self.loss_graph_dict[n_id][n.gid][1:]
+            try:
+                link['dst_orient'] = self.loss_graph_dict[n.gid][n_id][1:]
+            except:
+                print("WARNING: asymmetrical edge %d %d"%(n_id, n.gid))
+                az = (link['src_orient'][0] + 180) % 360
+                el = -link['src_orient'][1] + 360
+                link['dst_orient'] = (az, el)
+            link['loss'] = self.loss_graph_dict[n_id][n.gid][0]*10
+            links.append(link)
+        #must return links in LOS that are in the buffer
         return links
 
     def restructure(self):
@@ -213,17 +245,15 @@ class CN_Generator():
                         self.plot_map()
                     #input("stop me")
         except KeyboardInterrupt:
-            pid = os.getpid()
-            killtree(pid)
+            #trick to save with ctrl-c
             pass
         # save result
         for k, v in self.net.compute_metrics().items():
             print(k, v)
         if self.debug_file:
-    
             dataname = self.datafolder + "data-" + self.filename + ".csv"
-            with open(dataname, "w+") as f: 
-                header_line = "# node, min_bw" 
+            with open(dataname, "w+") as f:
+                header_line = "# node, min_bw"
                 print(header_line, file=f)
                 min_b = self.net.compute_minimum_bandwidth()
                 for n, b in sorted(min_b.items(), key = lambda x: x[1]):
@@ -232,38 +262,12 @@ class CN_Generator():
 
             self.debug_file.close()
         if self.args.plot:
-            animationfile = self.save_evolution()
-            mapfile = self.plot_map()
+            #animationfile = self.save_evolution()
+            #mapfile = self.plot_map()
             graphfile = self.save_graph()
-            print("A browsable map was saved in " + mapfile)
-            print("A browsable animated map was saved in " + animationfile)
+            #print("A browsable map was saved in " + mapfile)
+            #print("A browsable animated map was saved in " + animationfile)
             print("A graphml was saved in " + graphfile)
-
-    def restructure_edgeeffect_mt(self, num_links=1):
-        # run only every self.args.R[0] nodes added
-        if not self.args.restructure or self.net.size() % int(self.R[0]) != 0:
-            return
-        num_links = self.R[1]
-        max_links = num_links
-        ee = EdgeEffect(self.net.graph, self.net.main_sg())
-        effect_edges = self.pool.map(ee.restructure_edgeeffect, self.feasible_links)
-        effect_edges.sort(key=lambda x: x['effect'])
-        # Try to connect the best link (try again till it gets connected)
-        while(effect_edges):
-            selected_edge = effect_edges.pop()
-            link = [link for link in self.feasible_links
-                    if link['src'].gid == selected_edge[0] and
-                    link['dst'].gid == selected_edge[1]
-                    ]
-            try:
-                self.add_link(link[0], existing=True)
-            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion):
-                pass
-            else:
-                max_links -= 1
-                if max_links <= 0:
-                    print("Restructured {} links".format(num_links))
-                    return
 
     def add_node(self, node):
         self.event_counter += 1
@@ -282,12 +286,11 @@ class CN_Generator():
         return graphname
 
     def graph_to_animation(self):
-        quasi_centroid = self.polygon_area.representative_point()
-        self.animation = folium.Map(location=(quasi_centroid.y,
-                                    quasi_centroid.x),
+        quasi_centroid = self.gateway.point
+        self.animation = folium.Map(location=(quasi_centroid.x,
+                                    quasi_centroid.y),
                                     zoom_start=14, tiles='OpenStreetMap')
-        p = shapely.ops.cascaded_union([pl for pl in self.polygon_area])
-        point_list = list(zip(*p.exterior.coords.xy))
+        point_list = list(zip(*self.sb.exterior.coords.xy))
         folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
                         fill_color="green", weight=1,
                         color='green').add_to(self.animation)
@@ -315,7 +318,7 @@ class CN_Generator():
             }
         n_coords = []
         n_times = []
-    
+
         for n in nodes_s:
             n_coords.append([n[1]['pos'], n[1]['pos']])
             n_times.append(1530744263666 + n[1]['event'] * 36000000)
@@ -335,21 +338,24 @@ class CN_Generator():
                 }
             }
         }
-    
+
         plugins.TimestampedGeoJson({
             'type': 'FeatureCollection',
             'features': [features_edges, features_nodes]},
             transition_time=500, auto_play=False).add_to(self.animation)
 
     def graph_to_leaflet(self):
-        quasi_centroid = self.polygon_area.representative_point()
-        self.map = folium.Map(location=(quasi_centroid.y, quasi_centroid.x),
+        inProj = Proj('epsg:3003')
+        outProj = Proj('epsg:4326')
+        s_project = partial(transform, inProj, outProj)
+        quasi_centroid = shapely.ops.transform(s_project, self.gateway.point)
+        self.map = folium.Map(location=(quasi_centroid.x, quasi_centroid.y),
                               zoom_start=14, tiles='OpenStreetMap')
-        p = shapely.ops.cascaded_union([pl for pl in self.polygon_area])
-        point_list = list(zip(*p.exterior.coords.xy))
-        folium.PolyLine(locations=[(y, x) for (x, y) in point_list],
-                        fill_color="green", weight=1,
-                        color='green').add_to(self.map)
+        # p = shapely.ops.transform(s_project, self.sb)
+        # point_list = list(zip(*p.exterior.coords.xy))
+        # folium.PolyLine(locations=[(x, y) for (x, y) in point_list],
+        #                 fill_color="green", weight=1,
+        #                 color='green').add_to(self.map)
         max_event = max(nx.get_node_attributes(self.net.graph, 'event').values())
         for node in self.net.graph.nodes(data=True):
             (lat, lon) = node[1]['pos']
@@ -361,12 +367,12 @@ class CN_Generator():
                     (node[0], node[1]['node'])
             opacity = node[1]['event']/max_event
             if node[0] == self.net.gateway:
-                folium.Marker([lon, lat],
+                folium.Marker(transform(inProj,outProj,lat, lon),
                               icon=folium.Icon(color='red'),
                               popup=label
                               ).add_to(self.map)
             else:
-                folium.CircleMarker([lon, lat],
+                folium.CircleMarker(transform(inProj,outProj,lat, lon),
                                     fill=True,
                                     popup=label,
                                     fill_opacity=opacity).add_to(self.map)
@@ -376,10 +382,8 @@ class CN_Generator():
             label = "Loss: %d dB<br>Rate: %d mbps<br>link_per_antenna: %d<br> src_orient %f <br> dst_orient %f" % \
                     (p['loss'], p['rate'], p['link_per_antenna'], p['src_orient'][0], p['dst_orient'][0])
             weight = 1 + 8/p['link_per_antenna']  # reasonable defaults
-            color = poor_mans_color_gamma(p['rate'])
-            folium.PolyLine(locations=[[lon_f, lat_f], [lon_t, lat_t]],
-                            weight=weight, popup=label,
-                            color=color).add_to(self.map)
+            folium.PolyLine(locations=[transform(inProj,outProj,lat_f, lon_f), transform(inProj,outProj,lat_t, lon_t)],
+                            weight=weight, popup=label).add_to(self.map)
 
     def plot_map(self):
         self.graph_to_leaflet()
@@ -401,17 +405,5 @@ class CN_Generator():
             header_line = "#" + str(vars(self.args))
             print(header_line, file=self.debug_file)
             print("nodes,", ",".join(m.keys()), file=self.debug_file)
-        print(len(self.net.graph), ",",  ",".join(map(str, m.values())), 
+        print(len(self.net.graph), ",",  ",".join(map(str, m.values())),
               file=self.debug_file)
-
-
-def killtree(pid, including_parent=False):
-    parent = psutil.Process(pid)
-    for child in parent.children(recursive=True):
-        try:
-            child.terminate()
-        except psutil.NoSuchProcess:
-            pass
-
-    if including_parent:
-        parent.kill()

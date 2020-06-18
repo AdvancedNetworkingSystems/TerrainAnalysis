@@ -1,36 +1,23 @@
-from multiprocessing import Pool
 import random
-from cn_generator import CN_Generator
-from misc import Susceptible_Buffer
-import time
-from antenna import Antenna
-import code
+from cn_generator import CN_Generator, NoMoreNodes
 from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
 
 
 class MM(CN_Generator):
 
     def __init__(self, args, unk_args=None):
-        self.sb = Susceptible_Buffer()
         CN_Generator.__init__(self, args=args, unk_args=unk_args)
         self.feasible_links = []
         self._post_init()
 
-    def stop_condition(self):
-        return self.stop_condition_maxnodes()
-
-    def get_newnode(self):
-        return self.get_random_node()
-
+    
     def restructure(self):
         return True
 
     def add_links(self, new_node):
         #returns all the potential links in LoS with the new node
-        print("testing node %r, against %d potential nodes,"
-              "already tested against %d nodes" %
-                (new_node, len(self.infected) - len(self.noloss_cache[new_node]),
-                len(self.noloss_cache[new_node])))
+        #print("testing node %r, against %d potential nodes"%
+                #(new_node, len(self.infected)))
         visible_links = [link for link in self.check_connectivity(
                          list(self.infected.values()), new_node) if link]
         if not visible_links:
@@ -47,13 +34,11 @@ class MM(CN_Generator):
             print(e.msg)
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
-            self.noloss_cache[new_node].add(link['dst'])
             return False
         except (AntennasExahustion, ChannelExahustion) as e:
             # If the antennas/channel of dst are finished i can try with another node
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
-            self.noloss_cache[new_node].add(link['dst'])
         if not src_ant:
             #I finished all the dst node
             return False

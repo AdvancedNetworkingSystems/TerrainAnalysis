@@ -38,14 +38,14 @@ class Network():
 
     def add_gateway(self, building, attrs={}):
         self.graph.add_node(building.gid,
-                            pos=building.xy(),
+                            pos=building.pos,
                             node=Node(self.max_dev * 2),
                             **attrs)
         self.gateway = building.gid
 
     def add_node(self, building, attrs={}):
         self.graph.add_node(building.gid,
-                            pos=building.xy(),
+                            pos=building.pos,
                             node=Node(self.max_dev),
                             **attrs)
 
@@ -193,11 +193,11 @@ class Network():
     def save_graph(self, filename):
         self.compute_minimum_bandwidth()
         for node in self.graph:
-            self.graph.node[node]['x'] = self.graph.node[node]['pos'][0]
-            self.graph.node[node]['y'] = self.graph.node[node]['pos'][1]
-            del self.graph.node[node]['pos']
+            self.graph.nodes[node]['x'] = self.graph.nodes[node]['pos'][0]
+            self.graph.nodes[node]['y'] = self.graph.nodes[node]['pos'][1]
+            del self.graph.nodes[node]['pos']
             # remove antenna to allow graph_ml exportation
-            del self.graph.node[node]['node']
+            del self.graph.nodes[node]['node']
         for edge in self.graph.edges():
             del self.graph.edges[edge]['src_ant']
             del self.graph.edges[edge]['dst_ant']
@@ -279,7 +279,7 @@ class Network():
 
                 if bw < min_bw:
                     min_bw = bw
-            self.graph.node[d]['min_bw'] = min_bw
+            self.graph.nodes[d]['min_bw'] = min_bw
             min_bandwidth[d] = min_bw
         return min_bandwidth
 
@@ -290,9 +290,10 @@ class Network():
         if len(self.graph) < 2:
             return 1
         main_comp = None
-        for c in nx.connected_component_subgraphs(self.graph.to_undirected()):
-            if self.gateway in c.nodes():
-                main_comp = c
+        for c in nx.connected_components(self.graph.to_undirected()):
+            sg = self.graph.subgraph(c)
+            if self.gateway in sg.nodes():
+                main_comp = sg
 
         connectivity = nx.node_connectivity(main_comp)
         if connectivity > 1:
@@ -341,7 +342,7 @@ class Network():
                                                      self.graph.edges(
                                                      data=True)])
         metrics["time_passed"] = datetime.datetime.now()
-        metrics["antennas_per_node"] = sum([len(x[1]['node'].antennas) 
+        metrics["antennas_per_node"] = sum([len(x[1]['node'].antennas)
                                             for x in self.graph.nodes(data=True)])\
                                                     /len(min_bandwidth)
         return metrics
