@@ -167,6 +167,9 @@ class Network():
         src_rate, dst_rate = ubnt.get_maximum_rate(link['loss'],
                                                    src_ant.ubnt_device[0],
                                                    dst_ant.ubnt_device[0])
+        if(src_rate == 0 or dst_rate ==0):
+            print("Error src_rate 0")
+            exit(-1)
         # Add everything to nx graph
         self.graph.add_edge(link['src'].gid,
                             link['dst'].gid,
