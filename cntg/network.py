@@ -129,6 +129,7 @@ class Network():
                                                    dst_ant.ubnt_device[0])
         if(src_rate == 0 or dst_rate ==0):
             raise LinkTooBad
+            return False
         # Add everything to nx graph
         self.graph.add_edge(link['src'].gid,
                             link['dst'].gid,

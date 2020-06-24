@@ -56,7 +56,7 @@ class CN_Generator():
         self.debug_file = None
         random.seed(self.random_seed)
         self.net.set_maxdev(self.args.max_dev)
-        self.datafolder = self.args.base_folder + "data/"
+        self.datafolder = self.args.base_folder + "results/"
         self.graphfolder = self.args.base_folder + "graph/"
         self.mapfolder = self.args.base_folder + "map/"
         for f in [self.datafolder, self.graphfolder, self.mapfolder]:
@@ -118,10 +118,15 @@ class CN_Generator():
         self.pop_tot = self.soc_df.P1.sum()
         self.buildings_idx = self.buildings.sindex
         self.event_counter = 0
+        self.candidate_nodes = []
+        self.candidate_len = 0
         ubnt.load_devices()
 
     def _post_init(self):
         gateway = self.get_gateway()
+        self.soc_df = self.soc_df.drop(gateway.gid)
+        self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
+        self.pop_tot = self.soc_df.P1.sum()
         self.gateway = gateway
         self.infected[gateway.gid] = gateway
         self.net.add_gateway(gateway, attrs={'event': 0})
@@ -169,19 +174,7 @@ class CN_Generator():
         #self.susceptible = set(db_buildings) - set(self.infected.values())
 
     def get_newnode(self):
-        #must cast into list and order because sample on set is unpredictable
-        # susceptible_tmp = sorted(list(self.susceptible), key=lambda x: x.gid)
-        # if not susceptible_tmp:
-        #     raise NoMoreNodes
-        gid = int(np.random.choice(self.gid_pop_prop[:,0], p =self.gid_pop_prop[:,1]/self.pop_tot))
-        self.pop_tot -= self.soc_df.loc[gid].P1
-        self.soc_df = self.soc_df.drop(gid)
-        self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
-        return Building(gid, self.buildings.loc[gid].geometry)
-
-        #new_node = random.sample(susceptible_tmp, 1)[0]
-        #self.susceptible.remove(new_node)
-        #return new_node
+        return False
 
 
     def stop_condition_maxnodes(self):
@@ -237,12 +230,15 @@ class CN_Generator():
                 az = (link['src_orient'][0] + 180) % 360
                 el = -link['src_orient'][1] + 360
                 link['dst_orient'] = (az, el)
-            link['loss'] = self.loss_graph_dict[n_id][n.gid][0]*10
+            link['loss'] = self.loss_graph_dict[n_id][n.gid][0]
             links.append(link)
         #must return links in LOS that are in the buffer
         return links
 
     def restructure(self):
+        return False
+
+    def finalize(self):
         return False
 
     def main(self):
@@ -260,13 +256,13 @@ class CN_Generator():
                     # update area of susceptible nodes
                     self.get_susceptibles()
                     self.restructure()
-                    print("Number of nodes:%d, infected:%d, susceptible:%d, "
+                    print("Number of nodes:%d, number of links:%d, infected:%d, susceptible:%d, unconnectable %d"
                           "Nodes below bw:%s"
-                          % (self.net.size(), len(self.infected),
-                             len(self.susceptible), self.below_bw_nodes))
+                          % (self.net.size(), len(self.net.graph.edges()), len(self.infected),
+                             len(self.susceptible), len(self.candidate_nodes), self.below_bw_nodes))
                     if self.args.D and len(self.net.graph) > 2:
                         self.print_metrics()
-                        self.plot_map()
+                        #self.plot_map()
                     #input("stop me")
         except KeyboardInterrupt:
             #trick to save with ctrl-c
@@ -285,6 +281,7 @@ class CN_Generator():
                 print("A data file was saved in " + dataname)
 
             self.debug_file.close()
+        self.finalize()
         if self.args.plot:
             #animationfile = self.save_evolution()
             #mapfile = self.plot_map()
@@ -428,6 +425,6 @@ class CN_Generator():
             self.debug_file = open(statsname, "w+", buffering=1) # line-buffered
             header_line = "#" + str(vars(self.args))
             print(header_line, file=self.debug_file)
-            print("nodes,", ",".join(m.keys()), file=self.debug_file)
-        print(len(self.net.graph), ",",  ",".join(map(str, m.values())),
+            print("nodes,unconnected,", ",".join(m.keys()), file=self.debug_file)
+        print(len(self.net.graph),len(self.candidate_nodes), ",",  ",".join(map(str, m.values())),
               file=self.debug_file)

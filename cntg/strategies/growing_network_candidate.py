@@ -15,8 +15,6 @@ class Growing_network_candidate(CN_Generator):
 
     def __init__(self, args, unk_args=None):
         CN_Generator.__init__(self, args=args, unk_args=unk_args)
-        self.candidate_nodes = []
-        self.candidate_len = 0
         self._post_init()
 
     def stop_condition(self):
@@ -29,12 +27,10 @@ class Growing_network_candidate(CN_Generator):
 
     def get_newnode(self):
         while(self.candidate_len > 0):
-            #print("Retry candidate node")
             self.candidate_len -= 1
             n = self.candidate_nodes.pop(0)
             self.last_gid = n.gid
             return n
-        #print("Extract new node")
         gid = int(np.random.choice(self.gid_pop_prop[:,0], p =self.gid_pop_prop[:,1]/self.pop_tot))
         self.pop_tot -= self.soc_df.loc[gid].P1
         self.soc_df = self.soc_df.drop(gid)
@@ -48,10 +44,14 @@ class Growing_network_candidate(CN_Generator):
         self.candidate_len = len(self.candidate_nodes)
         return True
 
+    def finalize(self):
+        for b in self.candidate_nodes:
+            self.add_node(b)
+
     def _add_links(self, new_node):
         #returns all the potential links in LoS with the new node
-        print("testing node %r, against %d nodes, %d potentian nodes" %
-             (new_node, len(self.infected), len(self.candidate_nodes)))
+        # print("testing node %r, against %d nodes, %d potentian nodes" %
+        #      (new_node, len(self.infected), len(self.candidate_nodes)))
         visible_links = [link for link in self.check_connectivity(
                          list(self.infected.values()), new_node) if link]
         # if there's at least one vaild link add the node to the network
@@ -72,6 +72,7 @@ class Growing_network_candidate(CN_Generator):
                 # If the antennas/channel of dst are finished i can try with another node
                 self.net.del_node(link['src'])
                 del self.infected[link['src'].gid]
+                src_ant = False
         if not src_ant:
             #I finished all the dst node
             return False

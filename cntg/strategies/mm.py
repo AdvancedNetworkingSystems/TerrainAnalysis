@@ -1,6 +1,6 @@
 import random
 from cn_generator import CN_Generator, NoMoreNodes
-from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
+from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTooBad
 
 
 class MM(CN_Generator):
@@ -39,6 +39,7 @@ class MM(CN_Generator):
             # If the antennas/channel of dst are finished i can try with another node
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
+            src_ant = False
         if not src_ant:
             #I finished all the dst node
             return False

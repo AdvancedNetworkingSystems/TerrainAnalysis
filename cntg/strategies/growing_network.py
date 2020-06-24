@@ -5,7 +5,7 @@ from misc import Susceptible_Buffer
 import time
 from antenna import Antenna
 import code
-from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
+from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTooBad
 
 
 class Growing_network(CN_Generator):
@@ -42,7 +42,6 @@ class Growing_network(CN_Generator):
                 src_ant = self.add_link(link)
             except (LinkUnfeasibilty) as e:
                 # If the link is unfeasible I don't need to try on the followings
-                print(e.msg)
                 self.net.del_node(link['src'])
                 del self.infected[link['src'].gid]
                 #self.noloss_cache[new_node].add(link['dst'])
@@ -51,6 +50,7 @@ class Growing_network(CN_Generator):
                 # If the antennas/channel of dst are finished i can try with another node
                 self.net.del_node(link['src'])
                 del self.infected[link['src'].gid]
+                src_ant = False
                 #self.noloss_cache[new_node].add(link['dst'])
         if not src_ant:
             #I finished all the dst node
