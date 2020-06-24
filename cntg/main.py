@@ -2,7 +2,9 @@
 
 from cn_generator import CN_Generator
 from misc import NoGWError
+from strategies.growing_network_candidate import Growing_network_candidate
 from strategies.growing_network import Growing_network
+
 from strategies.pref_attachment import Pref_attachment
 from strategies.mm import MM
 import configargparse
@@ -11,6 +13,7 @@ import cProfile
 
 STRATEGIES = {
     'growing_network': Growing_network,
+    'growing_network_candidate': Growing_network_candidate,
     'pref_attachment': Pref_attachment,
     'mm': MM
 }

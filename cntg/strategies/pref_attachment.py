@@ -11,9 +11,8 @@ from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion
 class Pref_attachment(CN_Generator):
 
     def __init__(self, args, unk_args=None):
-        self.sb = Susceptible_Buffer()
         CN_Generator.__init__(self, args=args, unk_args=unk_args)
-        self.feasible_links = []
+        self.pool = Pool(self.P)
         self._post_init()
 
     def stop_condition(self):
@@ -21,18 +20,12 @@ class Pref_attachment(CN_Generator):
             return self.stop_condition_maxnodes() or self.stop_condition_minbw()
         return self.stop_condition_minbw()
 
-    def get_newnode(self):
-        return self.get_random_node()
-
-    def restructure(self):
-        return self.restructure_edgeeffect_mt()
-
     def add_links(self, new_node):
         #returns all the potential links in LoS with the new node
-        print("testing node %r, against %d potential nodes,"
-              "already tested against %d nodes" %
-                (new_node, len(self.infected) - len(self.noloss_cache[new_node]),
-                len(self.noloss_cache[new_node])))
+        # print("testing node %r, against %d potential nodes,"
+        #       "already tested against %d nodes" %
+        #         (new_node, len(self.infected) - len(self.noloss_cache[new_node]),
+        #         len(self.noloss_cache[new_node])))
         visible_links = [link for link in self.check_connectivity(
                          list(self.infected.values()), new_node) if link]
         if not visible_links:
@@ -53,7 +46,8 @@ class Pref_attachment(CN_Generator):
                 return True
             if not m['min_bw']:
                 # If is none there was an exception (link unaddable) thus we add it to cache
-                self.noloss_cache[new_node].add(m['link']['dst'])
+                #self.noloss_cache[new_node].add(m['link']['dst'])
+                pass
             else:
                 clean_metrics.append(m)
         # We want the link that maximizes the difference of the worse case
@@ -76,12 +70,14 @@ class Pref_attachment(CN_Generator):
         link_added = 0
         while link_in_viewshed and link_added < self.V:
             link = link_in_viewshed.pop()
-            visible_links.remove(link)  # remove it from visible_links af
+            try:
+                visible_links.remove(link)  # remove it from visible_links af
+            except Exception:
+                import pdb; pdb.set_trace()
             try:
                 self.add_link(link, reverse=True)
-            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
+            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTooBad) as e:
                 print(e.msg)
             else:
                 link_added += 1
-        self.feasible_links += visible_links
         return True

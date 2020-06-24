@@ -10,7 +10,7 @@ class MM(CN_Generator):
         self.feasible_links = []
         self._post_init()
 
-    
+
     def restructure(self):
         return True
 
@@ -35,7 +35,7 @@ class MM(CN_Generator):
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
             return False
-        except (AntennasExahustion, ChannelExahustion) as e:
+        except (AntennasExahustion, ChannelExahustion, LinkTooBad) as e:
             # If the antennas/channel of dst are finished i can try with another node
             self.net.del_node(link['src'])
             del self.infected[link['src'].gid]
@@ -52,7 +52,7 @@ class MM(CN_Generator):
             visible_links.remove(link)  # remove it from visible_links af
             try:
                 self.add_link(link, reverse=True)
-            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion) as e:
+            except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTooBad) as e:
                 print(e.msg)
             else:
                 link_added += 1

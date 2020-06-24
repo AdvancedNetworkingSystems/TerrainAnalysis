@@ -16,11 +16,13 @@ from misc import NoGWError
 from node import AntennasExahustion, ChannelExahustion, LinkUnfeasibilty
 from edgeffect import EdgeEffect
 from building import Building
-from shapely.ops import cascaded_union
 from pyproj import Proj, transform
 import shapely.ops
 from functools import partial
-from shapely.geometry import box
+from shapely.geometry import box, Point
+import pyproj
+from shapely.ops import transform
+from shapely import wkt
 
 class NoMoreNodes(Exception):
     pass
@@ -78,9 +80,7 @@ class CN_Generator():
         self.loss_graph_path = "%s/loss_graph.edgelist"%(self.args.data_dir)
         if os.path.exists(self.loss_graph_path+".dump"):
             with open(self.loss_graph_path+".dump", 'rb') as handle:
-                print("A")
                 self.loss_graph_dict = pickle.load(handle)
-                print("B")
         else:
             self.loss_graph_dict = {}
             with open(self.loss_graph_path) as gr:
@@ -98,9 +98,22 @@ class CN_Generator():
                     pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
         df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir))
         self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
-        self.soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
+        #Remove nodes that are not in the connected component of the graph
+        to_rem = []
+        for b in self.buildings.itertuples():
+            if b.id not in self.loss_graph_dict.keys():
+                to_rem.append(b.id)
+        print("Removing %d nodes that are unconnectable"%(len(to_rem)))
+        self.buildings = self.buildings.drop(to_rem)
+        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+
+        self.soc_df = gpd.read_file("%s/socecon.csv"%(self.args.data_dir))
+        soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
+        soc_df['geom'] = soc_df['geom'].apply(wkt.loads)
+        self.soc_df = gpd.GeoDataFrame(soc_df, geometry='geom')
         self.soc_df['id'] = self.soc_df.gid
         self.soc_df = self.soc_df.set_index('id')
+        self.soc_df = self.soc_df.drop(to_rem)
         self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
         self.pop_tot = self.soc_df.P1.sum()
         self.buildings_idx = self.buildings.sindex
@@ -118,15 +131,26 @@ class CN_Generator():
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
+        project = partial(
+            pyproj.transform,
+                pyproj.Proj(init='epsg:4326'), # source coordinate system
+                pyproj.Proj(init='epsg:3003')) # destination coordinate system
+        (lat, long) =  self.gwd['gws'][self.dataset][self.b]
+        gw = transform(project, Point(long, lat))  # apply projection
+        buildings = self.soc_df[self.soc_df.contains(gw)]
+        if len(buildings) == 0:
+            print("Selected gw is invalid")
         try:
-            osm_id = self.gwd['gws'][self.dataset][self.b]
+            id = list(buildings.itertuples())[0].gid
+            p = self.buildings.loc[id].geometry
         except IndexError:
             print("Index %d is out of range" % (self.b))
             raise NoGWError
         except KeyError:
             print("Dataset %s is not in gw file" % (self.dataset))
             raise NoGWError
-        return Building(osm_id, self.buildings.loc[osm_id].geometry)
+        print("Selected GW at %f,%f with id %d"%(long, lat, id))
+        return Building(id, p)
 
     def get_susceptibles(self):
         #self.susceptible = set(self.db_buildings) - set(self.infected.values())
@@ -160,7 +184,7 @@ class CN_Generator():
         #return new_node
 
 
-    def stop_condition(self):
+    def stop_condition_maxnodes(self):
         return len(self.infected) > self.n
 
     def stop_condition_minbw(self, rounds=1):
@@ -170,7 +194,6 @@ class CN_Generator():
             self.below_bw_nodes = '-'
             return False
         self.below_bw_nodes = 0
-
         # recompute minimum bw at each node
         bw = self.B[0]
         self.net.compute_minimum_bandwidth()
@@ -179,9 +202,10 @@ class CN_Generator():
             if n == self.net.gateway:
                 continue
             try:
-                if self.net.graph.node[n]['min_bw'] < bw:
+                if self.net.graph.nodes[n]['min_bw'] < bw:
                     self.below_bw_nodes += 1
                     if self.below_bw_nodes/len(self.infected) > self.B[1]:
+                        print("%f nodes below"%(self.below_bw_nodes/len(self.infected)))
                         return True
             except KeyError:
                 #if the nod has no 'min_bw' means that it is not connected
@@ -219,7 +243,7 @@ class CN_Generator():
         return links
 
     def restructure(self):
-        raise NotImplementedError
+        return False
 
     def main(self):
         try:

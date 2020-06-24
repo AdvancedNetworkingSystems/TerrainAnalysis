@@ -4,14 +4,16 @@ import random
 from antenna import Antenna
 node_fixed_cost = 200
 
+class LinkTooBad(Exception):
+    msg = "Link has too attenuation, can't connect"
+    pass
 
 class AntennasExahustion(Exception):
     msg = "No more antennas"
     pass
 
-
 class LinkUnfeasibilty(Exception):
-    msg = "Link Unfeasibile"
+    msg = "Link Unfeasible"
     pass
 
 
