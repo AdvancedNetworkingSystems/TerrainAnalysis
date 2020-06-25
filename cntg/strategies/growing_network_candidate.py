@@ -91,5 +91,5 @@ class Growing_network_candidate(CN_Generator):
                 link_added +=1
 
         # add the remaining links to a list of feasible links for edgeffect
-        print("Added link from %s to %s"%(link['src'], link['dst']))
+        print("Added link from %s to %s, with loss %d"%(link['src'], link['dst'], link['loss']))
         return True
