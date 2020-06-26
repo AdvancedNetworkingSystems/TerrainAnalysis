@@ -1,8 +1,5 @@
-from multiprocessing import Pool
 import random
 from cn_generator import CN_Generator
-from misc import Susceptible_Buffer
-import time
 from antenna import Antenna
 import code
 import numpy as np
@@ -17,8 +14,6 @@ class Growing_network(CN_Generator):
         CN_Generator.__init__(self, args=args, unk_args=unk_args, cache=cache)
         self._post_init()
 
-
-
     def get_newnode(self):
         #must cast into list and order because sample on set is unpredictable
         # susceptible_tmp = sorted(list(self.susceptible), key=lambda x: x.gid)
@@ -32,7 +27,6 @@ class Growing_network(CN_Generator):
         #new_node = random.sample(susceptible_tmp, 1)[0]
         #self.susceptible.remove(new_node)
         #return new_node
-
 
     def stop_condition(self):
         if self.n:
