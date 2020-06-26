@@ -100,16 +100,33 @@ class CN_Generator():
                     src = int(l[0])
                     dst = int(l[1])
                     #check if there's the opposite edge to save 50% of memory
-                    # try:
-                    #     self.loss_graph_dict[dst][src]
-                    # except KeyError:
-                    if src not in self.loss_graph_dict.keys():
-                        self.loss_graph_dict[src] = {}
-                    self.loss_graph_dict[src][dst] = [np.int8(l[2]),
-                                                      np.float16(l[3]),
-                                                      np.float16(l[4])]
+                    try:
+                        self.loss_graph_dict[dst,src]
+                    except KeyError:
+                        self.loss_graph_dict[src,dst] = [np.int8(l[2]),
+                                                          np.float16(l[3]),
+                                                          np.float16(l[4])]
                 with open(self.loss_graph_path+".dump", 'wb') as handle:
                     pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        if os.path.exists(self.loss_graph_path+".dump_int"):
+            with open(self.loss_graph_path+".dump_int", 'rb') as handle:
+                self.graph_dict = pickle.load(handle)
+        else:
+            self.graph_dict= {}
+            with open(self.loss_graph_path) as gr:
+                for line in gr:
+                    l = line[:-1].split(' ')
+                    if(len(l)<=1):
+                        continue
+                    src = int(l[0])
+                    dst = int(l[1])
+                    #check if there's the opposite edge to save 50% of memory
+                    if src not in self.graph_dict.keys():
+                        self.graph_dict[src] = []
+                    self.graph_dict[src].append(dst)
+                with open(self.loss_graph_path+".dump_int", 'wb') as handle:
+                    pickle.dump(self.graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
         df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
@@ -117,7 +134,7 @@ class CN_Generator():
         #Remove nodes that are not in the connected component of the graph
         to_rem = []
         for b in self.buildings.itertuples():
-            if b.id not in self.loss_graph_dict.keys():
+            if b.id not in self.graph_dict.keys():
                 to_rem.append(b.id)
         print("Removing %d nodes that are unconnectable"%(len(to_rem)))
         self.buildings = self.buildings.drop(to_rem)
@@ -229,7 +246,7 @@ class CN_Generator():
         neighbors = []
         try:
             for n in nodes:
-                if n.gid in self.loss_graph_dict[n_id].keys():
+                if n.gid in self.graph_dict[n_id]:
                     neighbors.append(n)
         except KeyError:
             print("Node out of area %d"%(n_id))
@@ -237,14 +254,15 @@ class CN_Generator():
             link = {}
             link['src'] = new_node
             link['dst'] = n
-            link['src_orient'] = self.loss_graph_dict[n_id][n.gid][1:]
             try:
-                link['dst_orient'] = self.loss_graph_dict[n.gid][n_id][1:]
-            except:
-                az = (link['src_orient'][0] + 180) % 360
-                el = -link['src_orient'][1] + 360
-                link['dst_orient'] = (az, el)
-            link['loss'] = self.loss_graph_dict[n_id][n.gid][0]
+                tupl = self.loss_graph_dict[n_id,n.gid]
+            except KeyError:
+                tupl =  self.loss_graph_dict[n.gid, n_id]
+            link['src_orient'] = tupl[1:]
+            az = (link['src_orient'][0] + 180) % 360
+            el = -link['src_orient'][1] + 360
+            link['dst_orient'] = (az, el)
+            link['loss'] = tupl[0]
             links.append(link)
         #must return links in LOS that are in the buffer
         return links
