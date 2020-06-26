@@ -78,20 +78,46 @@ class CN_Generator():
                            self.args.max_dev,
                            time.time())
         self.loss_graph_path = "%s/loss_graph.edgelist"%(self.args.data_dir)
-        if os.path.exists(self.loss_graph_path+".dfdump"):
-            self.loss_graph_df = pd.read_pickle(self.loss_graph_path+".dfdump")
+        ## pandas alternative which is very slow, yet memory effective
+        # if os.path.exists(self.loss_graph_path+".dfdump"):
+        #     self.loss_graph_df = pd.read_pickle(self.loss_graph_path+".dfdump")
+        # else:
+        #      self.loss_graph_df = pd.read_csv(self.loss_graph_path,  names=['src', 'dst', 'loss', 'az_angle', 'el_angle'], sep=' ')
+        #      self.loss_graph_df.to_pickle(self.loss_graph_path+".dfdump", protocol=pickle.HIGHEST_PROTOCOL)
+        #
+        # keys = list(self.loss_graph_df.src.drop_duplicates())
+        # self.loss_graph_df = self.loss_graph_df.set_index(['src', 'dst'])
+        if os.path.exists(self.loss_graph_path+".dump"):
+            with open(self.loss_graph_path+".dump", 'rb') as handle:
+                self.loss_graph_dict = pickle.load(handle)
         else:
-             self.loss_graph_df = pd.read_csv(self.loss_graph_path,  names=['src', 'dst', 'loss', 'az_angle', 'el_angle'], sep=' ')
-             self.loss_graph_df.to_pickle(self.loss_graph_path+".dfdump", protocol=pickle.HIGHEST_PROTOCOL)
-        #self.loss_graph_df = pd.read_csv(self.loss_graph_path,  names=['src', 'dst', 'loss', 'src_angle'], sep=' ', usecols=[0,1,2,3])
-        keys = list(self.loss_graph_df.src.drop_duplicates())
-        self.loss_graph_df = self.loss_graph_df.set_index(['src', 'dst'])
+            self.loss_graph_dict = {}
+            with open(self.loss_graph_path) as gr:
+                for line in gr:
+                    l = line[:-1].split(' ')
+                    if(len(l)<=1):
+                        continue
+                    src = int(l[0])
+                    dst = int(l[1])
+                    #check if there's the opposite edge to save 50% of memory
+                    # try:
+                    #     self.loss_graph_dict[dst][src]
+                    # except KeyError:
+                    if src not in self.loss_graph_dict.keys():
+                        self.loss_graph_dict[src] = {}
+                    self.loss_graph_dict[src][dst] = [np.int8(l[2]),
+                                                      np.float16(l[3]),
+                                                      np.float16(l[4])]
+                with open(self.loss_graph_path+".dump", 'wb') as handle:
+                    pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
         df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
         self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
         #Remove nodes that are not in the connected component of the graph
         to_rem = []
         for b in self.buildings.itertuples():
-            if b.id not in keys:
+            if b.id not in self.loss_graph_dict.keys():
                 to_rem.append(b.id)
         print("Removing %d nodes that are unconnectable"%(len(to_rem)))
         self.buildings = self.buildings.drop(to_rem)
@@ -203,7 +229,7 @@ class CN_Generator():
         neighbors = []
         try:
             for n in nodes:
-                if n.gid in self.loss_graph_df.loc[n_id].index:
+                if n.gid in self.loss_graph_dict[n_id].keys():
                     neighbors.append(n)
         except KeyError:
             print("Node out of area %d"%(n_id))
@@ -211,18 +237,14 @@ class CN_Generator():
             link = {}
             link['src'] = new_node
             link['dst'] = n
-            pointer = self.loss_graph_df.loc[n_id].loc[n.gid]
-            link['src_orient'] = [pointer.az_angle, pointer.el_angle]
+            link['src_orient'] = self.loss_graph_dict[n_id][n.gid][1:]
             try:
-                rev_pointer = self.loss_graph_df.loc[n.gid].loc[n_id]
-                link['dst_orient'] = [rev_pointer.az_angle, rev_pointer.el_angle]
+                link['dst_orient'] = self.loss_graph_dict[n.gid][n_id][1:]
             except:
-                print("WARNING: asymmetrical edge %d %d"%(n_id, n.gid))
-                import pdb; pdb.set_trace()
                 az = (link['src_orient'][0] + 180) % 360
                 el = -link['src_orient'][1] + 360
                 link['dst_orient'] = (az, el)
-            link['loss'] = pointer.loss
+            link['loss'] = self.loss_graph_dict[n_id][n.gid][0]
             links.append(link)
         #must return links in LOS that are in the buffer
         return links
