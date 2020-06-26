@@ -82,6 +82,9 @@ class Growing_network(CN_Generator):
                 del self.infected[link['src'].gid]
                 src_ant = False
                 #self.noloss_cache[new_node].add(link['dst'])
+            if(src_ant):
+                break
+
         if not src_ant:
             #I finished all the dst node
             return False
@@ -100,5 +103,5 @@ class Growing_network(CN_Generator):
                 link_added +=1
 
         # add the remaining links to a list of feasible links for edgeffect
-        print("Added link from %s to %s, with loss %d"%(link['src'], link['dst'], link['loss']))
+        print("Added link from %s to %s, with loss %d and additional %d links"%(link['src'], link['dst'], link['loss'], link_added))
         return True
