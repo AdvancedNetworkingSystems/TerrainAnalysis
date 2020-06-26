@@ -23,6 +23,7 @@ from shapely.geometry import box, Point
 import pyproj
 from shapely.ops import transform
 from shapely import wkt
+import gc
 
 class NoMoreNodes(Exception):
     pass
@@ -89,7 +90,9 @@ class CN_Generator():
         # self.loss_graph_df = self.loss_graph_df.set_index(['src', 'dst'])
         if os.path.exists(self.loss_graph_path+".dump"):
             with open(self.loss_graph_path+".dump", 'rb') as handle:
+                gc.disable()
                 self.loss_graph_dict = pickle.load(handle)
+                gc.enable()
         else:
             self.loss_graph_dict = {}
             with open(self.loss_graph_path) as gr:
@@ -126,8 +129,9 @@ class CN_Generator():
                         self.graph_dict[src] = []
                     self.graph_dict[src].append(dst)
                 with open(self.loss_graph_path+".dump_int", 'wb') as handle:
+                    gc.disable()
                     pickle.dump(self.graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+                    gc.enable()
 
         df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
         self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
