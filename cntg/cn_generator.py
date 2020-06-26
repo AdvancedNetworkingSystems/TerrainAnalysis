@@ -122,7 +122,6 @@ class CN_Generator():
         self.net.add_gateway(gateway, attrs={'event': 0})
         self.event_counter += 1
         self.db_buildings = [Building(b.id, b.geometry) for b in self.buildings.itertuples()]
-        self.susceptible = set(self.db_buildings) - set(self.infected.values())
         print("The gateway is " + repr(gateway))
 
     def get_gateway(self):
