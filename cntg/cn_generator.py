@@ -24,20 +24,22 @@ import pyproj
 from shapely.ops import transform
 from shapely import wkt
 import gc
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning) #problem with pyproj
 
 class NoMoreNodes(Exception):
     pass
 
 class CN_Generator():
 
-    def __init__(self, args={}, unk_args={}):
+    def __init__(self, args={}, unk_args={}, cache={}):
         self.round = 0
         self.below_bw_nodes = 0
         self.infected = {}
         self.susceptible = set()
         self.net = network.Network()
         with open("gws.yml", "r") as gwf:
-            self.gwd = yaml.load(gwf)
+            self.gwd = yaml.safe_load(gwf)
         self.args = args
         self.n = self.args.max_size
         self.e = self.args.expansion
@@ -88,50 +90,61 @@ class CN_Generator():
         #
         # keys = list(self.loss_graph_df.src.drop_duplicates())
         # self.loss_graph_df = self.loss_graph_df.set_index(['src', 'dst'])
-        if os.path.exists(self.loss_graph_path+".dump"):
-            with open(self.loss_graph_path+".dump", 'rb') as handle:
-                gc.disable()
-                self.loss_graph_dict = pickle.load(handle)
-                gc.enable()
-        else:
-            self.loss_graph_dict = {}
-            with open(self.loss_graph_path) as gr:
-                for line in gr:
-                    l = line[:-1].split(' ')
-                    if(len(l)<=1):
-                        continue
-                    src = int(l[0])
-                    dst = int(l[1])
-                    #check if there's the opposite edge to save 50% of memory
-                    try:
-                        self.loss_graph_dict[dst,src]
-                    except KeyError:
-                        self.loss_graph_dict[src,dst] = [np.int8(l[2]),
-                                                          np.float16(l[3]),
-                                                          np.float16(l[4])]
-                with open(self.loss_graph_path+".dump", 'wb') as handle:
-                    pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        if os.path.exists(self.loss_graph_path+".dump_int"):
-            with open(self.loss_graph_path+".dump_int", 'rb') as handle:
-                self.graph_dict = pickle.load(handle)
-        else:
-            self.graph_dict= {}
-            with open(self.loss_graph_path) as gr:
-                for line in gr:
-                    l = line[:-1].split(' ')
-                    if(len(l)<=1):
-                        continue
-                    src = int(l[0])
-                    dst = int(l[1])
-                    #check if there's the opposite edge to save 50% of memory
-                    if src not in self.graph_dict.keys():
-                        self.graph_dict[src] = []
-                    self.graph_dict[src].append(dst)
-                with open(self.loss_graph_path+".dump_int", 'wb') as handle:
+        try:
+            self.loss_graph_dict = cache['loss_graph_dict']
+            print("Using cached loss graph dict")
+        except:
+            print("Loading loss graph dict from disk")
+            if os.path.exists(self.loss_graph_path+".dump"):
+                with open(self.loss_graph_path+".dump", 'rb') as handle:
                     gc.disable()
-                    pickle.dump(self.graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                    self.loss_graph_dict = pickle.load(handle)
                     gc.enable()
+            else:
+                self.loss_graph_dict = {}
+                with open(self.loss_graph_path) as gr:
+                    for line in gr:
+                        l = line[:-1].split(' ')
+                        if(len(l)<=1):
+                            continue
+                        src = int(l[0])
+                        dst = int(l[1])
+                        #check if there's the opposite edge to save 50% of memory
+                        try:
+                            self.loss_graph_dict[dst,src]
+                        except KeyError:
+                            self.loss_graph_dict[src,dst] = [np.int8(l[2]),
+                                                              np.float16(l[3]),
+                                                              np.float16(l[4])]
+                    with open(self.loss_graph_path+".dump", 'wb') as handle:
+                        pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            cache['loss_graph_dict'] = self.loss_graph_dict
+        try:
+            self.graph_dict = cache['graph_dict']
+            print("Using cached graph dict")
+        except:
+            print("Loading graph dict from disk")
+            if os.path.exists(self.loss_graph_path+".dump_int"):
+                with open(self.loss_graph_path+".dump_int", 'rb') as handle:
+                    self.graph_dict = pickle.load(handle)
+            else:
+                self.graph_dict= {}
+                with open(self.loss_graph_path) as gr:
+                    for line in gr:
+                        l = line[:-1].split(' ')
+                        if(len(l)<=1):
+                            continue
+                        src = int(l[0])
+                        dst = int(l[1])
+                        #check if there's the opposite edge to save 50% of memory
+                        if src not in self.graph_dict.keys():
+                            self.graph_dict[src] = []
+                        self.graph_dict[src].append(dst)
+                    with open(self.loss_graph_path+".dump_int", 'wb') as handle:
+                        gc.disable()
+                        pickle.dump(self.graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                        gc.enable()
+            cache['graph_dict'] = self.graph_dict
 
         df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
         self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)

@@ -66,7 +66,6 @@ def parse_args():
             "these are in the viewshed of the current one.", type=int, default=0)
     parser.add_argument("-C", "--channel_width", help="802.11 channel width",
                     choices=[20,40,80,160], default=20, type=int)
-    parser.add_argument("--dsn", help="DSN to for the connection to PostGIS", required=True)
     parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
     parser.set_defaults(plot=False)
     args, unknown = parser.parse_known_args()

@@ -25,13 +25,12 @@ def parse_args():
     s_list = STRATEGIES.keys()
     parser = configargparse.get_argument_parser(default_config_files=['config.yml', 'batch.yml'])
     # configuration arguments:
-    parser.add_argument("--dsn", help="DSN to for the connection to PostGIS", required=True)
-    parser.add_argument("--lidar_table", help="pointcloud table containing lidar/srtm data", required=True)
-    parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
     parser.add_argument("-P", "--processes", help="number of parallel processes",
                         default=1, type=int)
+    parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
     # simulation parameters:
     # iterables
+
     parser.add_argument("-s", "--strategy",
                         help="a strategy to be used",
                         required=True,
@@ -40,7 +39,12 @@ def parse_args():
                              help="a data set from the available ones",
                              required=True,
                              action="append")
-
+    parser.add_argument("-dd", "--data_dir",
+                              help="directory containing the pre-computed data of the area",
+                              required=True)
+    parser.add_argument("-ne", "--n_elev",
+                             help="fixed elevation for nodes antenna poles",
+                             required=True, type=int)
     parser.add_argument("--max_dev",
                              help="maximum number of devices per node",
                              type=int, default=float('inf'), nargs='+')
@@ -62,7 +66,7 @@ def parse_args():
             "(in Mbps). Ex: '1 0 1' will stop when any node has less than 1Mbps "
             "(in Mbps). Ex: '5 0.15 10' will stop when 15% of nodes has less than 5Mbps "
             "but not before we have at least 10 nodes",
-            default="1 0 1")
+            default="1 0 1", nargs='+')
     parser.add_argument('-R', "--restructure", help="restructure with edgeffect every r"
             " rounds, adding l links. Accepts two arguments: r l", default=[])
 
@@ -79,9 +83,10 @@ def parse_args():
     args, unknown = parser.parse_known_args()
     return args, unknown
 
-
+cache = {}
 if __name__ == '__main__':
     args, unknown_args = parse_args()
+    print(args)
     runs = args.runs
     args = vars(args)
     for k in args:
@@ -94,7 +99,7 @@ if __name__ == '__main__':
     for e in executions:
         for i in range(runs):
             try:
-                s = STRATEGIES.get(e.strategy)(args=e, unk_args=None)
+                s = STRATEGIES.get(e.strategy)(args=e, unk_args=None, cache=cache)
             except NoGWError:
                 print("Gateway Not provieded")
             else:

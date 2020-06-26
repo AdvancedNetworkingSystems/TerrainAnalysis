@@ -13,8 +13,8 @@ from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTo
 
 class Growing_network(CN_Generator):
 
-    def __init__(self, args, unk_args=None):
-        CN_Generator.__init__(self, args=args, unk_args=unk_args)
+    def __init__(self, args, unk_args=None, cache={}):
+        CN_Generator.__init__(self, args=args, unk_args=unk_args, cache=cache)
         self._post_init()
 
 
