@@ -292,7 +292,9 @@ class CN_Generator():
 
     def main(self):
         try:
+            print("Evaluating stop")
             while not self.stop_condition():
+                print("Getting new node")
                 self.round += 1
                 # pick random node
                 try:
@@ -301,6 +303,7 @@ class CN_Generator():
                     print("No more nodes to test")
                     break
                 # connect it to the network
+                print("Connecting link")
                 if(self.add_links(new_node)):
                     # update area of susceptible nodes
                     self.get_susceptibles()
