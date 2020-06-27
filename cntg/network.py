@@ -295,8 +295,9 @@ class Network():
         if len(self.graph) < 2:
             return 1
         main_comp = None
-        for c in nx.connected_components(self.graph.to_undirected()):
-            sg = self.graph.subgraph(c)
+        und_graph = self.graph.to_undirected(as_view=True)
+        for c in nx.connected_components(und_graph):
+            sg = und_graph.subgraph(c)
             if self.gateway in sg.nodes():
                 main_comp = sg
 
@@ -304,8 +305,7 @@ class Network():
         if connectivity > 1:
             return connectivity
         else:
-            return 1/len(list(nx.articulation_points(
-                               main_comp.to_undirected())))
+            return 1/len(list(nx.articulation_points(main_comp)))
 
     def compute_metrics(self):
         """ returns a dictionary with a set of metrics that evaluate the
