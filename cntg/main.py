@@ -8,7 +8,7 @@ from strategies.growing_network import Growing_network
 from strategies.pref_attachment import Pref_attachment
 from strategies.mm import MM
 import configargparse
-import cProfile
+import logging
 
 
 STRATEGIES = {
@@ -69,7 +69,7 @@ def parse_args():
     parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
     parser.set_defaults(plot=False)
     parser.add_argument("--log_level", default=logging.INFO,
-                        type=lambda x: getattr(logging, x)),
+                        type=lambda x: getattr(logging, x),
                         help="Configure the logging level.")
     args, unknown = parser.parse_known_args()
     return args, unknown

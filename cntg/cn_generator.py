@@ -27,10 +27,25 @@ import gc
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning) #problem with pyproj
 import logging
-
+import tqdm
 
 class NoMoreNodes(Exception):
     pass
+
+
+class TqdmLoggingHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level)
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            tqdm.tqdm.write(msg)
+            self.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
 
 class CN_Generator():
 
@@ -82,110 +97,34 @@ class CN_Generator():
                            self.V,
                            self.args.max_dev,
                            time.time())
-        self.loss_graph_path = "%s/loss_graph.edgelist"%(self.args.data_dir)
-        logfile = self.datafolder + self.filename + ".log"
-        logging.basicConfig(filename=logfile, level=logging.DEBUG)
-        self.logger = logging.getLogger("cntg_logger")
-        ch = logging.StreamHandler()
-        ch.setLevel(level=args.log_level)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        ch.setFormatter(formatter)
-        self.logger.addHandler(ch)
-        ## pandas alternative which is very slow, yet memory effective
-        # if os.path.exists(self.loss_graph_path+".dfdump"):
-        #     self.loss_graph_df = pd.read_pickle(self.loss_graph_path+".dfdump")
-        # else:
-        #      self.loss_graph_df = pd.read_csv(self.loss_graph_path,  names=['src', 'dst', 'loss', 'az_angle', 'el_angle'], sep=' ')
-        #      self.loss_graph_df.to_pickle(self.loss_graph_path+".dfdump", protocol=pickle.HIGHEST_PROTOCOL)
-        #
-        # keys = list(self.loss_graph_df.src.drop_duplicates())
-        # self.loss_graph_df = self.loss_graph_df.set_index(['src', 'dst'])
+        self.open_log()
+
         try:
             self.loss_graph_dict = cache['loss_graph_dict']
             self.logger.info("Using cached loss graph dict")
         except:
-            self.logger.info("Loading loss graph dict from disk")
-            if os.path.exists(self.loss_graph_path+".dump"):
-                with open(self.loss_graph_path+".dump", 'rb') as handle:
-                    gc.disable()
-                    self.loss_graph_dict = pickle.load(handle)
-                    gc.enable()
-            else:
-                self.loss_graph_dict = {}
-                with open(self.loss_graph_path) as gr:
-                    for line in gr:
-                        l = line[:-1].split(' ')
-                        if(len(l)<=1):
-                            continue
-                        src = int(l[0])
-                        dst = int(l[1])
-                        #check if there's the opposite edge to save 50% of memory
-                        try:
-                            self.loss_graph_dict[dst,src]
-                        except KeyError:
-                            self.loss_graph_dict[src,dst] = [np.int8(l[2]),
-                                                              np.float16(l[3]),
-                                                              np.float16(l[4])]
-                    with open(self.loss_graph_path+".dump", 'wb') as handle:
-                        pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            self.read_loss_graph()
             cache['loss_graph_dict'] = self.loss_graph_dict
         try:
             self.graph_dict = cache['graph_dict']
             self.logger.info("Using cached graph dict")
         except:
-            self.logger.info("Loading graph dict from disk")
-            if os.path.exists(self.loss_graph_path+".dump_int"):
-                with open(self.loss_graph_path+".dump_int", 'rb') as handle:
-                    self.graph_dict = pickle.load(handle)
-            else:
-                self.graph_dict= {}
-                with open(self.loss_graph_path) as gr:
-                    for line in gr:
-                        l = line[:-1].split(' ')
-                        if(len(l)<=1):
-                            continue
-                        src = int(l[0])
-                        dst = int(l[1])
-                        #check if there's the opposite edge to save 50% of memory
-                        if src not in self.graph_dict.keys():
-                            self.graph_dict[src] = []
-                        self.graph_dict[src].append(dst)
-                    with open(self.loss_graph_path+".dump_int", 'wb') as handle:
-                        gc.disable()
-                        pickle.dump(self.graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                        gc.enable()
+            self.read_intervis_graph()
             cache['graph_dict'] = self.graph_dict
 
         try:
-            self.buildings = cache['buildings']
+            self.buildings = cache['buildings'].copy()
             self.logger.info("Using cached buildings set")
         except KeyError:
-            self.logger.info("Loading buildings set from disk")
-            df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
-            self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
-            #Remove nodes that are not in the connected component of the graph
-            to_rem = []
-            for b in self.buildings.itertuples():
-                if b.id not in self.graph_dict.keys():
-                    to_rem.append(b.id)
-            self.logger.info("Removing %d nodes that are unconnectable"%(len(to_rem)))
-            self.buildings = self.buildings.drop(to_rem)
-            self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
-            cache['buildings'] = self.buildings
+            self.read_buildings()
+            cache['buildings'] = self.buildings.copy()
 
         try:
-            self.soc_df = cache['soc_df']
+            self.soc_df = cache['soc_df'].copy()
             self.logger.info("Using cached socioeconomic data set")
         except KeyError:
-            self.logger.info("Loading socioeconomic data set from disk")
-            self.soc_df = gpd.read_file("%s/socecon.csv"%(self.args.data_dir))
-            soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
-            soc_df['geom'] = soc_df['geom'].apply(wkt.loads)
-            self.soc_df = gpd.GeoDataFrame(soc_df, geometry='geom')
-            self.soc_df['id'] = self.soc_df.gid
-            self.soc_df = self.soc_df.set_index('id')
-            self.soc_df = self.soc_df.drop(to_rem)
-            cache['soc_df'] = self.soc_df
+            self.read_socdataset()
+            cache['soc_df'] = self.soc_df.copy()
 
         self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
         self.pop_tot = self.soc_df.P1.sum()
@@ -206,6 +145,104 @@ class CN_Generator():
         self.event_counter += 1
         self.db_buildings = [Building(b.id, b.geometry) for b in self.buildings.itertuples()]
         self.logger.info("The gateway is " + repr(gateway))
+
+    def read_buildings(self):
+        self.logger.info("Loading buildings set from disk")
+        df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
+        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+        #Remove nodes that are not in the connected component of the graph
+        self.to_rem = []
+        for b in self.buildings.itertuples():
+            if b.id not in self.graph_dict.keys():
+                self.to_rem.append(b.id)
+        self.logger.info("Removing %d nodes that are unconnectable"%(len(self.to_rem)))
+        self.buildings = self.buildings.drop(self.to_rem)
+        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+
+    def read_socdataset(self):
+        self.logger.info("Loading socioeconomic data set from disk")
+        self.soc_df = gpd.read_file("%s/socecon.csv"%(self.args.data_dir))
+        soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
+        soc_df['geom'] = soc_df['geom'].apply(wkt.loads)
+        self.soc_df = gpd.GeoDataFrame(soc_df, geometry='geom')
+        self.soc_df['id'] = self.soc_df.gid
+        self.soc_df = self.soc_df.set_index('id')
+        self.soc_df = self.soc_df.drop(self.to_rem)
+
+    def read_loss_graph(self):
+        self.logger.info("Loading loss graph dict from disk")
+        if os.path.exists(self.loss_graph_path+".dump"):
+            with open(self.loss_graph_path+".dump", 'rb') as handle:
+                gc.disable()
+                self.loss_graph_dict = pickle.load(handle)
+                gc.enable()
+        else:
+            self.loss_graph_dict = {}
+            with open(self.loss_graph_path) as gr:
+                for line in gr:
+                    l = line[:-1].split(' ')
+                    if(len(l)<=1):
+                        continue
+                    src = int(l[0])
+                    dst = int(l[1])
+                    #check if there's the opposite edge to save 50% of memory
+                    try:
+                        self.loss_graph_dict[dst,src]
+                    except KeyError:
+                        self.loss_graph_dict[src,dst] = [np.int8(l[2]),
+                                                          np.float16(l[3]),
+                                                          np.float16(l[4])]
+                with open(self.loss_graph_path+".dump", 'wb') as handle:
+                    pickle.dump(self.loss_graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def read_intervis_graph(self):
+        self.logger.info("Loading graph dict from disk")
+        if os.path.exists(self.loss_graph_path+".dump_int"):
+            with open(self.loss_graph_path+".dump_int", 'rb') as handle:
+                gc.disable()
+                self.graph_dict = pickle.load(handle)
+                gc.enable()
+        else:
+            self.graph_dict= {}
+            with open(self.loss_graph_path) as gr:
+                for line in gr:
+                    l = line[:-1].split(' ')
+                    if(len(l)<=1):
+                        continue
+                    src = int(l[0])
+                    dst = int(l[1])
+                    #check if there's the opposite edge to save 50% of memory
+                    if src not in self.graph_dict.keys():
+                        self.graph_dict[src] = []
+                    self.graph_dict[src].append(dst)
+                with open(self.loss_graph_path+".dump_int", 'wb') as handle:
+
+                    pickle.dump(self.graph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+    def open_log(self):
+        self.loss_graph_path = "%s/loss_graph.edgelist"%(self.args.data_dir)
+        logfile = self.datafolder + self.filename + ".log"
+
+        self.logger = logging.getLogger("cntg_logger")
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+        self.fl = logging.FileHandler(filename=logfile)
+        self.fl.setLevel(level=logging.DEBUG)
+
+        ch = TqdmLoggingHandler()
+        ch.setLevel(level=self.args.log_level)
+
+        ch.setFormatter(formatter)
+
+        self.logger.addHandler(ch)
+        self.logger.addHandler(self.fl)
+
+    def close_log(self):
+        for hndl in self.logger.handlers[:]:
+            hndl.close()
+            self.logger.removeHandler(hndl)
 
     def get_gateway(self):
         project = partial(
@@ -341,7 +378,7 @@ class CN_Generator():
             pass
         # save result
         for k, v in self.net.compute_metrics().items():
-            print(k, v)
+            self.logger.info("%s: %s"%(k, v))
         if self.debug_file:
             dataname = self.datafolder + "data-" + self.filename + ".csv"
             with open(dataname, "w+") as f:
@@ -351,7 +388,7 @@ class CN_Generator():
                 for n, b in sorted(min_b.items(), key = lambda x: x[1]):
                     print(n, "," ,  b, file=f)
                 self.logger.info("A data file was saved in " + dataname)
-
+            self.fl.close()
             self.debug_file.close()
         self.finalize()
         if self.args.plot:
@@ -361,6 +398,7 @@ class CN_Generator():
             #print("A browsable map was saved in " + mapfile)
             #print("A browsable animated map was saved in " + animationfile)
             self.logger.info("A graphml was saved in " + graphfile)
+        self.close_log()
 
     def add_node(self, node):
         self.event_counter += 1
