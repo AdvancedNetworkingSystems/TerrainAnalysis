@@ -146,24 +146,33 @@ class CN_Generator():
                         gc.enable()
             cache['graph_dict'] = self.graph_dict
 
-        df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
-        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
-        #Remove nodes that are not in the connected component of the graph
-        to_rem = []
-        for b in self.buildings.itertuples():
-            if b.id not in self.graph_dict.keys():
-                to_rem.append(b.id)
-        print("Removing %d nodes that are unconnectable"%(len(to_rem)))
-        self.buildings = self.buildings.drop(to_rem)
-        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+        try:
+            self.buildings = cache['buildings']
+        except KeyError:
+            df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
+            self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+            #Remove nodes that are not in the connected component of the graph
+            to_rem = []
+            for b in self.buildings.itertuples():
+                if b.id not in self.graph_dict.keys():
+                    to_rem.append(b.id)
+            print("Removing %d nodes that are unconnectable"%(len(to_rem)))
+            self.buildings = self.buildings.drop(to_rem)
+            self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
+            cache['buildings'] = self.buildings
 
-        self.soc_df = gpd.read_file("%s/socecon.csv"%(self.args.data_dir))
-        soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
-        soc_df['geom'] = soc_df['geom'].apply(wkt.loads)
-        self.soc_df = gpd.GeoDataFrame(soc_df, geometry='geom')
-        self.soc_df['id'] = self.soc_df.gid
-        self.soc_df = self.soc_df.set_index('id')
-        self.soc_df = self.soc_df.drop(to_rem)
+        try:
+            self.soc_df = cache['soc_df']
+        except KeyError:
+            self.soc_df = gpd.read_file("%s/socecon.csv"%(self.args.data_dir))
+            soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
+            soc_df['geom'] = soc_df['geom'].apply(wkt.loads)
+            self.soc_df = gpd.GeoDataFrame(soc_df, geometry='geom')
+            self.soc_df['id'] = self.soc_df.gid
+            self.soc_df = self.soc_df.set_index('id')
+            self.soc_df = self.soc_df.drop(to_rem)
+            cache['soc_df'] = self.soc_df
+
         self.gid_pop_prop = self.soc_df[["gid", "P1"]].to_numpy()
         self.pop_tot = self.soc_df.P1.sum()
         self.buildings_idx = self.buildings.sindex
