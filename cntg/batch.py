@@ -8,6 +8,8 @@ from strategies.mm import MM
 import configargparse
 import itertools
 from pprint import pprint
+import logging
+from tqdm import tqdm
 
 STRATEGIES = {
     'growing_network': Growing_network,
@@ -28,6 +30,9 @@ def parse_args():
     parser.add_argument("-P", "--processes", help="number of parallel processes",
                         default=1, type=int)
     parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
+    parser.add_argument("--log_level", default=logging.ERROR,
+                        type=lambda x: getattr(logging, x),
+                        help="Configure the logging level.")
     # simulation parameters:
     # iterables
 
@@ -86,7 +91,6 @@ def parse_args():
 cache = {}
 if __name__ == '__main__':
     args, unknown_args = parse_args()
-    print(args)
     runs = args.runs
     args = vars(args)
     for k in args:
@@ -94,13 +98,12 @@ if __name__ == '__main__':
             temp = []
             temp.append(args[k])
             args[k] = temp
-    product = [x for x in itertools.product(*args.values())]
+    product = [x for x in itertools.product(*args.values())] * runs
     executions = [Bunch(dict(zip(args.keys(), p))) for p in product]
-    for e in executions:
-        for i in range(runs):
-            try:
-                s = STRATEGIES.get(e.strategy)(args=e, unk_args=None, cache=cache)
-            except NoGWError:
-                print("Gateway Not provieded")
-            else:
-                s.main()
+    for e in tqdm(executions):
+        try:
+            s = STRATEGIES.get(e.strategy)(args=e, unk_args=None, cache=cache)
+        except NoGWError:
+            continue
+        else:
+            s.main()

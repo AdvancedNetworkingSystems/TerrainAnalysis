@@ -68,6 +68,9 @@ def parse_args():
                     choices=[20,40,80,160], default=20, type=int)
     parser.add_argument("--base_folder", help="Output base folder for the data", required=True)
     parser.set_defaults(plot=False)
+    parser.add_argument("--log_level", default=logging.INFO,
+                        type=lambda x: getattr(logging, x)),
+                        help="Configure the logging level.")
     args, unknown = parser.parse_known_args()
     return args, unknown
 
@@ -76,6 +79,6 @@ if __name__ == '__main__':
     try:
         s = STRATEGIES.get(args.strategy)(args=args, unk_args=unknown_args)
     except NoGWError:
-        print("Gateway Not provieded")
+        pass
     else:
         s.main()

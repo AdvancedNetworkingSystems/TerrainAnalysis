@@ -6,7 +6,7 @@ import code
 import numpy as np
 from building import Building
 from node import LinkUnfeasibilty, AntennasExahustion, ChannelExahustion,  LinkTooBad
-
+import logging
 
 class Pref_attachment(CN_Generator):
 
@@ -14,7 +14,7 @@ class Pref_attachment(CN_Generator):
         CN_Generator.__init__(self, args=args, unk_args=unk_args)
         try:
             self.pool = cache['pool']
-            print("Using cached pool")
+            self.logger.info("Using cached pool")
         except KeyError:
             self.pool = Pool(self.P)#), maxchildpertask = 100)
             cache['pool'] = self.pool
@@ -71,7 +71,6 @@ class Pref_attachment(CN_Generator):
         clean_metrics = []
         for m in metrics:
             if m['min_bw'] == 0:
-                print("First Node")
                 # This is the first node we add so we have to ignore the metric and add it
                 self.infected[m['link']['src'].gid] = m['link']['src']
                 self.add_node(m['link']['src'])
@@ -107,8 +106,8 @@ class Pref_attachment(CN_Generator):
             try:
                 self.add_link(link, reverse=True)
             except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTooBad) as e:
-                print(e.msg)
+                self.logger.debug(e.msg)
             else:
                 link_added += 1
-        print("Added link from %s to %s, with loss %d and additional %d links"%(link['src'], link['dst'], link['loss'], link_added))
+        self.logger.debug("Added link from %s to %s, with loss %d and additional %d links"%(link['src'], link['dst'], link['loss'], link_added))
         return True

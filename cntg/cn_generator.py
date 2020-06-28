@@ -26,6 +26,8 @@ from shapely import wkt
 import gc
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning) #problem with pyproj
+import logging
+
 
 class NoMoreNodes(Exception):
     pass
@@ -81,6 +83,14 @@ class CN_Generator():
                            self.args.max_dev,
                            time.time())
         self.loss_graph_path = "%s/loss_graph.edgelist"%(self.args.data_dir)
+        logfile = self.datafolder + self.filename + ".log"
+        logging.basicConfig(filename=logfile, level=logging.DEBUG)
+        self.logger = logging.getLogger("cntg_logger")
+        ch = logging.StreamHandler()
+        ch.setLevel(level=args.log_level)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
         ## pandas alternative which is very slow, yet memory effective
         # if os.path.exists(self.loss_graph_path+".dfdump"):
         #     self.loss_graph_df = pd.read_pickle(self.loss_graph_path+".dfdump")
@@ -92,9 +102,9 @@ class CN_Generator():
         # self.loss_graph_df = self.loss_graph_df.set_index(['src', 'dst'])
         try:
             self.loss_graph_dict = cache['loss_graph_dict']
-            print("Using cached loss graph dict")
+            self.logger.info("Using cached loss graph dict")
         except:
-            print("Loading loss graph dict from disk")
+            self.logger.info("Loading loss graph dict from disk")
             if os.path.exists(self.loss_graph_path+".dump"):
                 with open(self.loss_graph_path+".dump", 'rb') as handle:
                     gc.disable()
@@ -121,9 +131,9 @@ class CN_Generator():
             cache['loss_graph_dict'] = self.loss_graph_dict
         try:
             self.graph_dict = cache['graph_dict']
-            print("Using cached graph dict")
+            self.logger.info("Using cached graph dict")
         except:
-            print("Loading graph dict from disk")
+            self.logger.info("Loading graph dict from disk")
             if os.path.exists(self.loss_graph_path+".dump_int"):
                 with open(self.loss_graph_path+".dump_int", 'rb') as handle:
                     self.graph_dict = pickle.load(handle)
@@ -148,7 +158,9 @@ class CN_Generator():
 
         try:
             self.buildings = cache['buildings']
+            self.logger.info("Using cached buildings set")
         except KeyError:
+            self.logger.info("Loading buildings set from disk")
             df = pd.read_csv("%s/best_p.csv"%(self.args.data_dir), names=['id', 'x', 'y'], header=0)
             self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
             #Remove nodes that are not in the connected component of the graph
@@ -156,14 +168,16 @@ class CN_Generator():
             for b in self.buildings.itertuples():
                 if b.id not in self.graph_dict.keys():
                     to_rem.append(b.id)
-            print("Removing %d nodes that are unconnectable"%(len(to_rem)))
+            self.logger.info("Removing %d nodes that are unconnectable"%(len(to_rem)))
             self.buildings = self.buildings.drop(to_rem)
             self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
             cache['buildings'] = self.buildings
 
         try:
             self.soc_df = cache['soc_df']
+            self.logger.info("Using cached socioeconomic data set")
         except KeyError:
+            self.logger.info("Loading socioeconomic data set from disk")
             self.soc_df = gpd.read_file("%s/socecon.csv"%(self.args.data_dir))
             soc_df = pd.read_csv("%s/socecon.csv"%(self.args.data_dir))
             soc_df['geom'] = soc_df['geom'].apply(wkt.loads)
@@ -191,7 +205,7 @@ class CN_Generator():
         self.net.add_gateway(gateway, attrs={'event': 0})
         self.event_counter += 1
         self.db_buildings = [Building(b.id, b.geometry) for b in self.buildings.itertuples()]
-        print("The gateway is " + repr(gateway))
+        self.logger.info("The gateway is " + repr(gateway))
 
     def get_gateway(self):
         project = partial(
@@ -202,17 +216,17 @@ class CN_Generator():
         gw = transform(project, Point(long, lat))  # apply projection
         buildings = self.soc_df[self.soc_df.contains(gw)]
         if len(buildings) == 0:
-            print("Selected gw is invalid")
+            self.logger.error("Selected gw is invalid")
         try:
             id = list(buildings.itertuples())[0].gid
             p = self.buildings.loc[id].geometry
         except IndexError:
-            print("Index %d is out of range" % (self.b))
+            self.logger.error("Gw not found in dataset" % (self.b))
             raise NoGWError
         except KeyError:
-            print("Dataset %s is not in gw file" % (self.dataset))
+            self.logger.error("Dataset %s is not in gw file" % (self.dataset))
             raise NoGWError
-        print("Selected GW at %f,%f with id %d"%(long, lat, id))
+        self.logger.debug("Selected GW at %f,%f with id %d"%(long, lat, id))
         return Building(id, p)
 
     def get_susceptibles(self):
@@ -256,7 +270,7 @@ class CN_Generator():
                 if self.net.graph.nodes[n]['min_bw'] < bw:
                     self.below_bw_nodes += 1
                     if self.below_bw_nodes/len(self.infected) > self.B[1]:
-                        print("%f nodes below"%(self.below_bw_nodes/len(self.infected)))
+                        self.logger.info("%f nodes below"%(self.below_bw_nodes/len(self.infected)))
                         return True
             except KeyError:
                 #if the nod has no 'min_bw' means that it is not connected
@@ -275,7 +289,7 @@ class CN_Generator():
                 if n.gid in self.graph_dict[n_id]:
                     neighbors.append(n)
         except KeyError:
-            print("Node out of area %d"%(n_id))
+            self.logger.warn("Node out of area %d"%(n_id))
         for n in neighbors:
             link = {}
             link['src'] = new_node
@@ -301,23 +315,20 @@ class CN_Generator():
 
     def main(self):
         try:
-            print("Evaluating stop")
             while not self.stop_condition():
-                print("Getting new node")
                 self.round += 1
                 # pick random node
                 try:
                     new_node = self.get_newnode()
                 except NoMoreNodes:
-                    print("No more nodes to test")
+                    self.logger.warn("No more nodes to test")
                     break
                 # connect it to the network
-                print("Connecting link")
                 if(self.add_links(new_node)):
                     # update area of susceptible nodes
                     self.get_susceptibles()
                     self.restructure()
-                    print("Number of nodes:%d, number of links:%d, infected:%d, susceptible:%d, unconnectable %d"
+                    self.logger.info("Number of nodes:%d, number of links:%d, infected:%d, susceptible:%d, unconnectable %d"
                           "Nodes below bw:%s"
                           % (self.net.size(), len(self.net.graph.edges())/2, len(self.infected),
                              len(self.susceptible), len(self.candidate_nodes), self.below_bw_nodes))
@@ -339,7 +350,7 @@ class CN_Generator():
                 min_b = self.net.compute_minimum_bandwidth()
                 for n, b in sorted(min_b.items(), key = lambda x: x[1]):
                     print(n, "," ,  b, file=f)
-                print("A data file was saved in " + dataname)
+                self.logger.info("A data file was saved in " + dataname)
 
             self.debug_file.close()
         self.finalize()
@@ -349,7 +360,7 @@ class CN_Generator():
             graphfile = self.save_graph()
             #print("A browsable map was saved in " + mapfile)
             #print("A browsable animated map was saved in " + animationfile)
-            print("A graphml was saved in " + graphfile)
+            self.logger.info("A graphml was saved in " + graphfile)
 
     def add_node(self, node):
         self.event_counter += 1

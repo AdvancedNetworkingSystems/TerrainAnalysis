@@ -92,10 +92,10 @@ class Growing_network(CN_Generator):
             try:
                 self.add_link(link, reverse=True)
             except (LinkUnfeasibilty, AntennasExahustion, ChannelExahustion, LinkTooBad) as e:
-                print(e.msg)
+                self.logger.debug(e.msg)
             else:
                 link_added +=1
 
         # add the remaining links to a list of feasible links for edgeffect
-        print("Added link from %s to %s, with loss %d and additional %d links"%(link['src'], link['dst'], link['loss'], link_added))
+        self.logger.debug("Added link from %s to %s, with loss %d and additional %d links"%(link['src'], link['dst'], link['loss'], link_added))
         return True
