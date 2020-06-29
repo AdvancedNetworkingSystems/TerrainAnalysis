@@ -1,11 +1,11 @@
-gateway: [0, 1, 2, 3, 4, 5]
-max_size: 5
+gateway: [0, 1, 2, 3, 4]
+max_size: 1000
 expansion: 500
 restructure: 10 1
-bandwidth: 5 0.1 10
-seed: 37
-strategy: mm
-dataset: [firenze, vaiano, pontremoli, quarrata]
+bandwidth: [5 0.1 10, 4 0.1 10, 3 0.1 10, 2 0.1 10]
 viewshed_extra: 2
 channel_width: 20
 max_dev: 4
+runs: 3
+n_elev: 2
+log_level: INFO
