@@ -107,4 +107,3 @@ if __name__ == '__main__':
             continue
         else:
             s.main()
-    cache['pool'].close()

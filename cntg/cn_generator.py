@@ -390,7 +390,6 @@ class CN_Generator():
                 self.logger.info("A data file was saved in " + dataname)
             self.fl.close()
             self.debug_file.close()
-        self.finalize()
         if self.args.plot:
             #animationfile = self.save_evolution()
             #mapfile = self.plot_map()
@@ -398,6 +397,7 @@ class CN_Generator():
             #print("A browsable map was saved in " + mapfile)
             #print("A browsable animated map was saved in " + animationfile)
             self.logger.info("A graphml was saved in " + graphfile)
+        self.finalize()
         self.close_log()
 
     def add_node(self, node):
@@ -536,5 +536,5 @@ class CN_Generator():
             header_line = "#" + str(vars(self.args))
             print(header_line, file=self.debug_file)
             print("nodes,unconnected,", ",".join(m.keys()), file=self.debug_file)
-        print(len(self.net.graph),len(self.candidate_nodes), ",",  ",".join(map(str, m.values())),
+        print(len(self.net.graph),",",len(self.candidate_nodes), ",",  ",".join(map(str, m.values())),
               file=self.debug_file)

@@ -12,12 +12,7 @@ class Pref_attachment(CN_Generator):
 
     def __init__(self, args, unk_args=None, cache={}):
         CN_Generator.__init__(self, args=args, unk_args=unk_args)
-        try:
-            self.pool = cache['pool']
-            self.logger.info("Using cached pool")
-        except KeyError:
-            self.pool = Pool(self.P)#), maxchildpertask = 100)
-            cache['pool'] = self.pool
+        self.pool = Pool(self.P)#), maxchildpertask = 100)
         self._post_init()
 
     def get_newnode(self):
@@ -41,6 +36,10 @@ class Pref_attachment(CN_Generator):
 
     def restructure(self):
         return True
+
+    def finalize(self):
+        self.pool.close()
+        self.pool.join()
 
     def add_links(self, new_node):
         if self._add_links(new_node):
