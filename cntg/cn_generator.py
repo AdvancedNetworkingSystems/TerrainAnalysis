@@ -143,7 +143,6 @@ class CN_Generator():
         self.infected[gateway.gid] = gateway
         self.net.add_gateway(gateway, attrs={'event': 0})
         self.event_counter += 1
-        self.db_buildings = [Building(b.id, b.geometry) for b in self.buildings.itertuples()]
         self.logger.info("The gateway is " + repr(gateway))
 
     def read_buildings(self):
@@ -157,7 +156,6 @@ class CN_Generator():
                 self.to_rem.append(b.id)
         self.logger.info("Removing %d nodes that are unconnectable"%(len(self.to_rem)))
         self.buildings = self.buildings.drop(self.to_rem)
-        self.buildings = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y)).set_index(df.id)
 
     def read_socdataset(self):
         self.logger.info("Loading socioeconomic data set from disk")
